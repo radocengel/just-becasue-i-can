@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Just Because You Can</title>
   <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://www.paypal.com/sdk/js?client-id=test&currency=EUR&enable-funding=venmo&components=buttons,applepay"></script>
   <style>
     * {
       margin: 0;
@@ -250,21 +251,21 @@
     }
 
     .badges-grid {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      max-width: 700px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      max-width: 800px;
       margin: 0 auto;
+      justify-items: center;
     }
 
     .badge-card {
       background: #111;
       border: 1px solid #222;
-      padding: 15px;
+      padding: 20px;
       text-align: center;
-      width: 120px;
-      height: 120px;
+      width: 160px;
+      height: 160px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -286,8 +287,8 @@
     }
 
     .badge-emoji {
-      font-size: 2.5rem;
-      margin-bottom: 8px;
+      font-size: 3.5rem;
+      margin-bottom: 10px;
       transition: transform 0.2s ease;
     }
 
@@ -296,12 +297,12 @@
     }
 
     .badge-name {
-      font-size: 0.6rem;
+      font-size: 0.7rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: #888;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
       line-height: 1.2;
     }
 
@@ -310,7 +311,7 @@
     }
 
     .badge-threshold {
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       color: #444;
       font-weight: 600;
     }
@@ -775,11 +776,48 @@
           <button class="quick-amount" data-amount="10000">€10K</button>
         </div>
 
-        <div id="payment-element"></div>
+        <!-- Payment Method Tabs -->
+        <div class="payment-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <button class="payment-tab active" data-tab="card" onclick="switchPaymentTab('card')" style="flex: 1; padding: 12px; background: #fff; color: #000; border: none; cursor: pointer; font-weight: 600;">Card</button>
+          <button class="payment-tab" data-tab="paypal" onclick="switchPaymentTab('paypal')" style="flex: 1; padding: 12px; background: #111; color: #666; border: 1px solid #333; cursor: pointer; font-weight: 600;">PayPal</button>
+          <button class="payment-tab" data-tab="crypto" onclick="switchPaymentTab('crypto')" style="flex: 1; padding: 12px; background: #111; color: #666; border: 1px solid #333; cursor: pointer; font-weight: 600;">Crypto</button>
+        </div>
 
-        <button class="pay-btn" id="payBtn" onclick="handlePayment()">
-          Donate Now
-        </button>
+        <!-- Card Payment -->
+        <div id="cardPayment" class="payment-content">
+          <div id="payment-element"></div>
+          <button class="pay-btn" id="payBtn" onclick="handlePayment()">
+            Donate Now
+          </button>
+        </div>
+
+        <!-- PayPal Payment -->
+        <div id="paypalPayment" class="payment-content" style="display: none;">
+          <div id="paypal-button-container" style="margin-bottom: 15px;"></div>
+          <div id="apple-pay-button" style="margin-top: 15px;"></div>
+          <p style="color: #444; font-size: 0.75rem; margin-top: 10px;">Apple Pay available via PayPal</p>
+        </div>
+
+        <!-- Crypto Payment -->
+        <div id="cryptoPayment" class="payment-content" style="display: none;">
+          <div style="background: #111; border: 1px solid #222; padding: 20px; margin-bottom: 15px;">
+            <p style="color: #fff; font-size: 0.9rem; margin-bottom: 15px;">🔥 We accept crypto! Best options:</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #f7931a;">₿ Bitcoin</span>
+              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #627eea;">Ξ Ethereum</span>
+              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #26a17b;">₮ USDT</span>
+              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #2775ca;">◎ USDC</span>
+            </div>
+            <p style="color: #666; font-size: 0.75rem; line-height: 1.5;">
+              <strong style="color: #888;">Pro tip:</strong> USDT or USDC on Polygon/Arbitrum = lowest fees 🚀<br>
+              Bitcoin/ETH for the OGs who don't care about gas ⛽
+            </p>
+          </div>
+          <button class="pay-btn" id="cryptoPayBtn" onclick="handleCryptoPayment()">
+            Pay with Crypto
+          </button>
+          <p style="color: #444; font-size: 0.7rem; margin-top: 10px;">Powered by NOWPayments • 100+ cryptocurrencies supported</p>
+        </div>
 
         <div class="loading" id="paymentLoading">
           <div class="spinner"></div>
@@ -790,6 +828,8 @@
           <span>Card</span>
           <span>Apple Pay</span>
           <span>Google Pay</span>
+          <span>PayPal</span>
+          <span>Crypto</span>
         </div>
 
         <div id="guestUpgrade" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #222; display: none;">
@@ -1257,6 +1297,148 @@
       }
     }
 
+    // Payment Tab Switching
+    function switchPaymentTab(tab) {
+      // Update tab buttons
+      document.querySelectorAll('.payment-tab').forEach(btn => {
+        if (btn.dataset.tab === tab) {
+          btn.style.background = '#fff';
+          btn.style.color = '#000';
+          btn.style.border = 'none';
+          btn.classList.add('active');
+        } else {
+          btn.style.background = '#111';
+          btn.style.color = '#666';
+          btn.style.border = '1px solid #333';
+          btn.classList.remove('active');
+        }
+      });
+
+      // Show/hide payment content
+      document.getElementById('cardPayment').style.display = tab === 'card' ? 'block' : 'none';
+      document.getElementById('paypalPayment').style.display = tab === 'paypal' ? 'block' : 'none';
+      document.getElementById('cryptoPayment').style.display = tab === 'crypto' ? 'block' : 'none';
+
+      // Initialize PayPal buttons if needed
+      if (tab === 'paypal' && !document.querySelector('#paypal-button-container .paypal-buttons')) {
+        initPayPal();
+      }
+    }
+
+    // PayPal Integration
+    let paypalInitialized = false;
+    function initPayPal() {
+      if (paypalInitialized) return;
+      paypalInitialized = true;
+
+      const amount = parseInt(document.getElementById('customAmount').value) || 10;
+
+      paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: 'black',
+          shape: 'rect',
+          label: 'donate'
+        },
+        createOrder: async function(data, actions) {
+          if (!currentUser) {
+            showModal('loginModal');
+            throw new Error('Please login first');
+          }
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: amount.toString(),
+                currency_code: 'EUR'
+              },
+              description: 'Just Because You Can - Donation'
+            }]
+          });
+        },
+        onApprove: async function(data, actions) {
+          const loading = document.getElementById('paymentLoading');
+          loading.classList.add('active');
+
+          try {
+            const details = await actions.order.capture();
+
+            // Record the donation on our server
+            const res = await fetch(`${API_URL}/api/payments/paypal-confirm`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({
+                orderId: data.orderID,
+                amount: amount
+              })
+            });
+
+            const confirmData = await res.json();
+            if (!res.ok) throw new Error(confirmData.error);
+
+            showSuccessModal(confirmData);
+            loadStats();
+            loadLeaderboard();
+
+            currentUser.totalDonated = confirmData.totalDonated;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+            loadBadges();
+          } catch (err) {
+            alert('PayPal payment failed: ' + err.message);
+          } finally {
+            loading.classList.remove('active');
+          }
+        },
+        onError: function(err) {
+          console.error('PayPal error:', err);
+          alert('PayPal error. Please try again.');
+        }
+      }).render('#paypal-button-container');
+    }
+
+    // Crypto Payment
+    async function handleCryptoPayment() {
+      if (!currentUser) {
+        showModal('loginModal');
+        return;
+      }
+
+      const amount = parseInt(document.getElementById('customAmount').value);
+      if (!amount || amount < 1) {
+        alert('Enter a valid amount');
+        return;
+      }
+
+      const loading = document.getElementById('paymentLoading');
+      loading.classList.add('active');
+
+      try {
+        const res = await fetch(`${API_URL}/api/payments/crypto-create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ amount })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Redirect to crypto payment page
+        if (data.paymentUrl) {
+          window.open(data.paymentUrl, '_blank');
+          alert('Complete the payment in the new window. Your donation will be credited once confirmed on the blockchain.');
+        }
+      } catch (err) {
+        alert('Crypto payment failed: ' + err.message);
+      } finally {
+        loading.classList.remove('active');
+      }
+    }
+
     function showSuccessModal(data) {
       document.getElementById('peopleBeat').textContent = data.peopleBeat || 0;
       document.getElementById('newRank').textContent = '#' + data.newRank;
@@ -1328,6 +1510,12 @@
         name: 'No Cap On God Fr Fr',
         emoji: '👁️',
         description: 'You\'ve transcended. A million euros just because you can. This isn\'t a flex—this is a lifestyle. You are the main character of main characters. Respectfully, touch grass (but also, respect).'
+      },
+      {
+        threshold: 10000000,
+        name: 'Certified Reality Glitch',
+        emoji: '🌌',
+        description: 'Ten million euros. You broke the simulation. The devs are checking the logs. You\'re not even playing by the rules anymore—you ARE the rules. This is beyond unhinged. This is transcendent chaos. You won the internet forever.'
       }
     ];
 

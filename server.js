@@ -118,7 +118,8 @@ const BADGES = [
   { threshold: 1000, name: 'Understood the Assignment', emoji: '📝', color: '#9c27b0' },
   { threshold: 10000, name: 'Goated with the Sauce', emoji: '🐐', color: '#ff9800' },
   { threshold: 100000, name: 'Absolutely Unhinged Legend', emoji: '🤯', color: '#f44336' },
-  { threshold: 1000000, name: 'No Cap On God Fr Fr', emoji: '👁️', color: '#ffd700' }
+  { threshold: 1000000, name: 'No Cap On God Fr Fr', emoji: '👁️', color: '#ffd700' },
+  { threshold: 10000000, name: 'Certified Reality Glitch', emoji: '🌌', color: '#00ffff' }
 ];
 
 function getBadge(totalDonated) {
@@ -398,6 +399,137 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
   }
 
   res.json({ received: true });
+});
+
+// PayPal payment confirmation
+app.post('/api/payments/paypal-confirm', authenticateToken, async (req, res) => {
+  try {
+    const { orderId, amount } = req.body;
+
+    if (!orderId || !amount) {
+      return res.status(400).json({ error: 'Missing order ID or amount' });
+    }
+
+    const amountInCents = Math.round(amount * 100);
+
+    // Get user's current rank before update
+    const rankBefore = getUserRank(req.user.id);
+
+    // Create donation record
+    const donationId = uuidv4();
+    db.prepare(
+      'INSERT INTO donations (id, user_id, amount, payment_method, payment_id, status) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(donationId, req.user.id, amountInCents, 'paypal', orderId, 'completed');
+
+    // Update user total
+    db.prepare('UPDATE users SET total_donated = total_donated + ? WHERE id = ?').run(amountInCents, req.user.id);
+
+    // Get user's new rank
+    const rankAfter = getUserRank(req.user.id);
+    const peopleBeat = rankBefore - rankAfter;
+
+    // Get updated user info
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+
+    // Send notifications to users who were passed
+    notifyPassedUsers(req.user.id, user.total_donated);
+
+    res.json({
+      success: true,
+      peopleBeat,
+      newRank: rankAfter,
+      totalDonated: user.total_donated,
+      badges: getAllBadges(user.total_donated),
+      newBadge: getBadge(user.total_donated)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'PayPal confirmation failed' });
+  }
+});
+
+// Create crypto payment (NOWPayments integration)
+app.post('/api/payments/crypto-create', authenticateToken, async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    if (!amount || amount < 1) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    const amountInCents = Math.round(amount * 100);
+
+    // Create pending donation record
+    const donationId = uuidv4();
+    db.prepare(
+      'INSERT INTO donations (id, user_id, amount, payment_method, status) VALUES (?, ?, ?, ?, ?)'
+    ).run(donationId, req.user.id, amountInCents, 'crypto', 'pending');
+
+    // In production, you would call NOWPayments API here
+    // For now, return a placeholder URL
+    const nowpaymentsApiKey = process.env.NOWPAYMENTS_API_KEY;
+
+    if (nowpaymentsApiKey) {
+      // Real NOWPayments integration
+      const response = await fetch('https://api.nowpayments.io/v1/invoice', {
+        method: 'POST',
+        headers: {
+          'x-api-key': nowpaymentsApiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          price_amount: amount,
+          price_currency: 'eur',
+          order_id: donationId,
+          order_description: 'Just Because You Can - Donation',
+          ipn_callback_url: `${process.env.APP_URL || 'http://localhost:3000'}/api/webhooks/nowpayments`,
+          success_url: `${process.env.APP_URL || 'http://localhost:3000'}?crypto_success=true`,
+          cancel_url: `${process.env.APP_URL || 'http://localhost:3000'}?crypto_cancel=true`
+        })
+      });
+
+      const data = await response.json();
+      if (data.invoice_url) {
+        return res.json({ paymentUrl: data.invoice_url, donationId });
+      }
+    }
+
+    // Fallback: Return placeholder for testing
+    res.json({
+      paymentUrl: `https://nowpayments.io/payment/?amount=${amount}&currency=eur&order_id=${donationId}`,
+      donationId,
+      message: 'Configure NOWPAYMENTS_API_KEY in .env for live payments'
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Crypto payment initialization failed' });
+  }
+});
+
+// NOWPayments IPN Webhook
+app.post('/api/webhooks/nowpayments', express.json(), async (req, res) => {
+  try {
+    const { order_id, payment_status, actually_paid } = req.body;
+
+    if (payment_status === 'finished' || payment_status === 'confirmed') {
+      const donation = db.prepare('SELECT * FROM donations WHERE id = ?').get(order_id);
+
+      if (donation && donation.status === 'pending') {
+        // Update donation status
+        db.prepare('UPDATE donations SET status = ? WHERE id = ?').run('completed', donation.id);
+        db.prepare('UPDATE users SET total_donated = total_donated + ? WHERE id = ?').run(donation.amount, donation.user_id);
+
+        // Notify passed users
+        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(donation.user_id);
+        notifyPassedUsers(donation.user_id, user.total_donated);
+      }
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('NOWPayments webhook error:', err);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
 });
 
 // ============ LEADERBOARD ROUTES ============
