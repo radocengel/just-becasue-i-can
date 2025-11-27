@@ -8,12 +8,48 @@ const { v4: uuidv4 } = require('uuid');
 const Database = require('better-sqlite3');
 const Stripe = require('stripe');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+
+// PayPal configuration
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
+const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
+const PAYPAL_MODE = process.env.PAYPAL_MODE || 'sandbox';
+const PAYPAL_API_URL = PAYPAL_MODE === 'live'
+  ? 'https://api-m.paypal.com'
+  : 'https://api-m.sandbox.paypal.com';
+
+// Get PayPal access token
+async function getPayPalAccessToken() {
+  const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
+  const response = await fetch(`${PAYPAL_API_URL}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+  const data = await response.json();
+  return data.access_token;
+}
+
+// Verify PayPal order
+async function verifyPayPalOrder(orderId) {
+  const accessToken = await getPayPalAccessToken();
+  const response = await fetch(`${PAYPAL_API_URL}/v2/checkout/orders/${orderId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  return response.json();
+}
 
 // Initialize Database
 const db = new Database('donations.db');
@@ -356,6 +392,24 @@ app.post('/api/auth/update-email', authenticateToken, async (req, res) => {
   }
 });
 
+// ============ CONFIG ROUTES ============
+
+// Get payment configuration (public keys only)
+app.get('/api/config', (req, res) => {
+  res.json({
+    stripe: {
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null
+    },
+    paypal: {
+      clientId: process.env.PAYPAL_CLIENT_ID || null,
+      mode: process.env.PAYPAL_MODE || 'sandbox'
+    },
+    crypto: {
+      enabled: !!process.env.NOWPAYMENTS_API_KEY
+    }
+  });
+});
+
 // ============ PAYMENT ROUTES ============
 
 // Create Stripe Payment Intent
@@ -493,6 +547,26 @@ app.post('/api/payments/paypal-confirm', authenticateToken, async (req, res) => 
       return res.status(400).json({ error: 'Missing order ID or amount' });
     }
 
+    // Verify order with PayPal if credentials are configured
+    if (PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET) {
+      try {
+        const orderDetails = await verifyPayPalOrder(orderId);
+
+        if (orderDetails.status !== 'COMPLETED') {
+          return res.status(400).json({ error: 'Payment not completed' });
+        }
+
+        // Verify amount matches
+        const paidAmount = parseFloat(orderDetails.purchase_units[0].amount.value);
+        if (Math.abs(paidAmount - amount) > 0.01) {
+          return res.status(400).json({ error: 'Amount mismatch' });
+        }
+      } catch (verifyErr) {
+        console.error('PayPal verification error:', verifyErr);
+        return res.status(400).json({ error: 'Could not verify PayPal payment' });
+      }
+    }
+
     const amountInCents = Math.round(amount * 100);
 
     // Get user's current rank before update
@@ -589,9 +663,36 @@ app.post('/api/payments/crypto-create', authenticateToken, async (req, res) => {
   }
 });
 
+// Verify NOWPayments IPN signature
+function verifyNowPaymentsSignature(payload, signature) {
+  const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET;
+  if (!ipnSecret) return true; // Skip verification if no secret configured
+
+  const sortedPayload = JSON.stringify(sortObject(payload));
+  const hmac = crypto.createHmac('sha512', ipnSecret);
+  hmac.update(sortedPayload);
+  const calculatedSignature = hmac.digest('hex');
+  return calculatedSignature === signature;
+}
+
+function sortObject(obj) {
+  return Object.keys(obj).sort().reduce((result, key) => {
+    result[key] = obj[key] && typeof obj[key] === 'object' ? sortObject(obj[key]) : obj[key];
+    return result;
+  }, {});
+}
+
 // NOWPayments IPN Webhook
 app.post('/api/webhooks/nowpayments', express.json(), async (req, res) => {
   try {
+    const signature = req.headers['x-nowpayments-sig'];
+
+    // Verify signature if IPN secret is configured
+    if (process.env.NOWPAYMENTS_IPN_SECRET && !verifyNowPaymentsSignature(req.body, signature)) {
+      console.error('NOWPayments: Invalid signature');
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
     const { order_id, payment_status, actually_paid } = req.body;
 
     if (payment_status === 'finished' || payment_status === 'confirmed') {

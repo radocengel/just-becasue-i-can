@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Just Because You Can</title>
   <script src="https://js.stripe.com/v3/"></script>
-  <script src="https://www.paypal.com/sdk/js?client-id=test&currency=EUR&enable-funding=venmo&components=buttons,applepay"></script>
+  <!-- PayPal SDK loaded dynamically with client ID from config -->
   <style>
     * {
       margin: 0;
@@ -1211,18 +1211,43 @@
     let paymentElement;
     let currentUser = null;
     let selectedAmount = 10;
+    let paymentConfig = null;
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       populateCountries();
       loadStats();
       loadBadges();
       loadLeaderboard();
       checkAuth();
       initAmountButtons();
+      await loadPaymentConfig();
     });
 
+    async function loadPaymentConfig() {
+      try {
+        const res = await fetch(`${API_URL}/api/config`);
+        paymentConfig = await res.json();
+
+        // Load PayPal SDK dynamically if client ID is configured
+        if (paymentConfig.paypal.clientId) {
+          const script = document.createElement('script');
+          script.src = `https://www.paypal.com/sdk/js?client-id=${paymentConfig.paypal.clientId}&currency=EUR&enable-funding=venmo&components=buttons,applepay`;
+          script.onload = () => console.log('PayPal SDK loaded');
+          document.head.appendChild(script);
+        }
+      } catch (err) {
+        console.error('Failed to load payment config:', err);
+      }
+    }
+
     async function initStripe() {
-      stripe = Stripe('pk_test_placeholder');
+      if (!paymentConfig || !paymentConfig.stripe.publishableKey) {
+        console.error('Stripe not configured');
+        document.getElementById('cardPayment').innerHTML = '<p style="color: #666; text-align: center;">Card payments not available. Please configure Stripe.</p>';
+        return;
+      }
+
+      stripe = Stripe(paymentConfig.stripe.publishableKey);
 
       elements = stripe.elements({
         mode: 'payment',
@@ -1620,6 +1645,19 @@
     let paypalInitialized = false;
     function initPayPal() {
       if (paypalInitialized) return;
+
+      // Check if PayPal is configured and SDK is loaded
+      if (!paymentConfig || !paymentConfig.paypal.clientId) {
+        document.getElementById('paypal-button-container').innerHTML = '<p style="color: #666; text-align: center;">PayPal not configured.</p>';
+        return;
+      }
+
+      if (typeof paypal === 'undefined') {
+        // SDK still loading, retry in 500ms
+        setTimeout(initPayPal, 500);
+        return;
+      }
+
       paypalInitialized = true;
 
       const amount = parseInt(document.getElementById('customAmount').value) || 10;
@@ -1691,6 +1729,11 @@
 
     // Crypto Payment
     async function handleCryptoPayment() {
+      if (!paymentConfig || !paymentConfig.crypto.enabled) {
+        alert('Crypto payments not configured. Please contact support.');
+        return;
+      }
+
       if (!currentUser) {
         showModal('loginModal');
         return;
