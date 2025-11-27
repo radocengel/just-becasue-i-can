@@ -172,6 +172,58 @@ app.post('/api/auth/quick-start', (req, res) => {
   }
 });
 
+// Full registration with email/password
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { nickname, country, email, password } = req.body;
+
+    if (!nickname || nickname.trim().length < 2) {
+      return res.status(400).json({ error: 'Nickname must be at least 2 characters' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Check if email already exists
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Create user with full account
+    const userId = uuidv4();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    db.prepare(
+      'INSERT INTO users (id, email, password, display_name, country, is_guest) VALUES (?, ?, ?, ?, ?, 0)'
+    ).run(userId, email, hashedPassword, nickname.trim(), country || null);
+
+    // Generate token
+    const token = jwt.sign({ id: userId, email, isGuest: false }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      token,
+      user: {
+        id: userId,
+        email,
+        displayName: nickname.trim(),
+        country: country || null,
+        totalDonated: 0,
+        isGuest: false,
+        badges: []
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Upgrade guest to full account
 app.post('/api/auth/upgrade', authenticateToken, async (req, res) => {
   try {

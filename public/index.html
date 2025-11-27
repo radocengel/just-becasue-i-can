@@ -751,7 +751,7 @@
         </button>
 
         <p style="color: #444; font-size: 0.8rem; margin-top: 20px;">
-          Wanna flex your receipts? You can save your progress after donating 💸<br>
+          Wanna flex your receipts? <a href="#" onclick="showModal('registerModal')" style="color: #fff;">Register</a> to track your donations 💸<br>
           <span style="color: #333;">Already a legend?</span> <a href="#" onclick="showModal('loginModal')" style="color: #fff;">Login</a>
         </p>
       </div>
@@ -861,6 +861,37 @@
   <footer>
     <p><a href="#" onclick="showModal('termsModal')">Terms</a> · <a href="#" onclick="showModal('privacyModal')">Privacy</a></p>
   </footer>
+
+  <!-- Register Modal -->
+  <div class="modal" id="registerModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
+      <h2>Register</h2>
+      <p style="color: #666; font-size: 0.85rem; margin-bottom: 20px;">Create an account to track all your donations</p>
+      <div class="error" id="registerError" style="display: none;"></div>
+      <form id="registerForm" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>Nickname</label>
+          <input type="text" id="registerNickname" required minlength="2" placeholder="Your display name">
+        </div>
+        <div class="form-group">
+          <label>Country (optional)</label>
+          <select id="registerCountry" class="country-select">
+            <option value="">Select your country</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="registerEmail" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="registerPassword" required minlength="6" placeholder="Min 6 characters">
+        </div>
+        <button type="submit" class="btn btn-primary">Create Account</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Login Modal -->
   <div class="modal" id="loginModal">
@@ -1071,12 +1102,19 @@
     ];
 
     function populateCountries() {
-      const select = document.getElementById('countryInput');
-      COUNTRIES.forEach(country => {
-        const option = document.createElement('option');
-        option.value = country;
-        option.textContent = country;
-        select.appendChild(option);
+      const selects = [
+        document.getElementById('countryInput'),
+        document.getElementById('registerCountry')
+      ];
+      selects.forEach(select => {
+        if (select) {
+          COUNTRIES.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            option.textContent = country;
+            select.appendChild(option);
+          });
+        }
       });
     }
 
@@ -1156,6 +1194,38 @@
         loadLeaderboard();
       } catch (err) {
         alert('Error: ' + err.message);
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const nickname = document.getElementById('registerNickname').value.trim();
+      const country = document.getElementById('registerCountry').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const errorEl = document.getElementById('registerError');
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname, country: country || null, email, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
+
+        closeModal('registerModal');
+        updateAuthUI(true);
+        initStripe();
+        loadLeaderboard();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
       }
     }
 
