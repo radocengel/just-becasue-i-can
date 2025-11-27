@@ -42,9 +42,25 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS admins (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_users_total ON users(total_donated DESC);
   CREATE INDEX IF NOT EXISTS idx_donations_user ON donations(user_id);
 `);
+
+// Create default admin if none exists
+const adminExists = db.prepare('SELECT id FROM admins LIMIT 1').get();
+if (!adminExists) {
+  const bcryptSync = require('bcryptjs');
+  const defaultPassword = bcryptSync.hashSync('admin123', 10);
+  db.prepare('INSERT INTO admins (id, username, password) VALUES (?, ?, ?)').run(uuidv4(), 'admin', defaultPassword);
+  console.log('Default admin created - username: admin, password: admin123');
+}
 
 // Middleware
 app.use(cors());
@@ -463,6 +479,238 @@ app.get('/api/stats', (req, res) => {
     totalDonors: totalDonors.count,
     totalDonations: totalDonations.count
   });
+});
+
+// ============ ADMIN ROUTES ============
+
+// Admin auth middleware
+const authenticateAdmin = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied' });
+  }
+
+  try {
+    const verified = jwt.verify(token, JWT_SECRET);
+    if (!verified.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    req.admin = verified;
+    next();
+  } catch (err) {
+    res.status(403).json({ error: 'Invalid token' });
+  }
+};
+
+// Admin login
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get(username);
+    if (!admin) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    const validPassword = await bcrypt.compare(password, admin.password);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ id: admin.id, username: admin.username, isAdmin: true }, JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({ token, username: admin.username });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get all users (admin)
+app.get('/api/admin/users', authenticateAdmin, (req, res) => {
+  const users = db.prepare(`
+    SELECT id, email, display_name, total_donated, created_at, notifications_enabled
+    FROM users
+    ORDER BY total_donated DESC
+  `).all();
+
+  res.json(users.map(u => ({
+    id: u.id,
+    email: u.email,
+    displayName: u.display_name,
+    totalDonated: u.total_donated,
+    createdAt: u.created_at,
+    notificationsEnabled: u.notifications_enabled,
+    badge: getBadge(u.total_donated)
+  })));
+});
+
+// Get all donations (admin)
+app.get('/api/admin/donations', authenticateAdmin, (req, res) => {
+  const donations = db.prepare(`
+    SELECT d.*, u.email, u.display_name
+    FROM donations d
+    LEFT JOIN users u ON d.user_id = u.id
+    ORDER BY d.created_at DESC
+  `).all();
+
+  res.json(donations.map(d => ({
+    id: d.id,
+    userId: d.user_id,
+    userEmail: d.email,
+    userDisplayName: d.display_name,
+    amount: d.amount,
+    currency: d.currency,
+    paymentMethod: d.payment_method,
+    status: d.status,
+    createdAt: d.created_at
+  })));
+});
+
+// Update user (admin) - for editing leaderboard
+app.put('/api/admin/users/:userId', authenticateAdmin, (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { displayName, totalDonated, notificationsEnabled } = req.body;
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update fields
+    if (displayName !== undefined) {
+      db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, userId);
+    }
+    if (totalDonated !== undefined) {
+      db.prepare('UPDATE users SET total_donated = ? WHERE id = ?').run(Math.round(totalDonated), userId);
+    }
+    if (notificationsEnabled !== undefined) {
+      db.prepare('UPDATE users SET notifications_enabled = ? WHERE id = ?').run(notificationsEnabled ? 1 : 0, userId);
+    }
+
+    const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    res.json({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.display_name,
+      totalDonated: updatedUser.total_donated,
+      notificationsEnabled: updatedUser.notifications_enabled
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete user (admin)
+app.delete('/api/admin/users/:userId', authenticateAdmin, (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete user's donations first
+    db.prepare('DELETE FROM donations WHERE user_id = ?').run(userId);
+    // Delete user
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Add manual donation (admin)
+app.post('/api/admin/donations', authenticateAdmin, (req, res) => {
+  try {
+    const { userId, amount, note } = req.body;
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const amountInCents = Math.round(amount * 100);
+    const donationId = uuidv4();
+
+    db.prepare(
+      'INSERT INTO donations (id, user_id, amount, payment_method, status) VALUES (?, ?, ?, ?, ?)'
+    ).run(donationId, userId, amountInCents, 'admin_manual', 'completed');
+
+    db.prepare('UPDATE users SET total_donated = total_donated + ? WHERE id = ?').run(amountInCents, userId);
+
+    res.json({ success: true, donationId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete donation (admin)
+app.delete('/api/admin/donations/:donationId', authenticateAdmin, (req, res) => {
+  try {
+    const { donationId } = req.params;
+
+    const donation = db.prepare('SELECT * FROM donations WHERE id = ?').get(donationId);
+    if (!donation) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
+
+    // Subtract from user total if donation was completed
+    if (donation.status === 'completed') {
+      db.prepare('UPDATE users SET total_donated = total_donated - ? WHERE id = ?').run(donation.amount, donation.user_id);
+    }
+
+    db.prepare('DELETE FROM donations WHERE id = ?').run(donationId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin stats
+app.get('/api/admin/stats', authenticateAdmin, (req, res) => {
+  const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get();
+  const totalDonated = db.prepare('SELECT SUM(total_donated) as total FROM users').get();
+  const totalDonations = db.prepare('SELECT COUNT(*) as count FROM donations WHERE status = ?').get('completed');
+  const pendingDonations = db.prepare('SELECT COUNT(*) as count FROM donations WHERE status = ?').get('pending');
+
+  // Recent activity
+  const recentDonations = db.prepare(`
+    SELECT d.*, u.display_name
+    FROM donations d
+    LEFT JOIN users u ON d.user_id = u.id
+    WHERE d.status = 'completed'
+    ORDER BY d.created_at DESC
+    LIMIT 10
+  `).all();
+
+  res.json({
+    totalUsers: totalUsers.count,
+    totalDonated: totalDonated.total || 0,
+    totalDonations: totalDonations.count,
+    pendingDonations: pendingDonations.count,
+    recentDonations: recentDonations.map(d => ({
+      id: d.id,
+      displayName: d.display_name,
+      amount: d.amount,
+      createdAt: d.created_at
+    }))
+  });
+});
+
+// Serve admin page
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // Serve frontend

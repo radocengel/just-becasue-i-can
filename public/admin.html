@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Just Because You Can</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    /* Login Screen */
+    .login-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    .login-box {
+      background: #1a1a2e;
+      padding: 40px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 400px;
+      border: 1px solid #333;
+    }
+
+    .login-box h1 {
+      color: #f39c12;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #888;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #f39c12;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+      color: #fff;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #333;
+      color: #fff;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .error {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    /* Dashboard */
+    .dashboard {
+      display: none;
+    }
+
+    .dashboard.active {
+      display: block;
+    }
+
+    /* Header */
+    .header {
+      background: #1a1a2e;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .header h1 {
+      color: #f39c12;
+      font-size: 1.5rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .header-right span {
+      color: #888;
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 30px;
+    }
+
+    .stat-card {
+      background: #1a1a2e;
+      padding: 25px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+
+    .stat-card h3 {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f39c12;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      padding: 0 30px;
+      border-bottom: 1px solid #333;
+    }
+
+    .tab {
+      padding: 15px 25px;
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 1rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .tab:hover {
+      color: #fff;
+    }
+
+    .tab.active {
+      color: #f39c12;
+      border-bottom-color: #f39c12;
+    }
+
+    /* Content */
+    .content {
+      padding: 30px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Tables */
+    .table-container {
+      background: #1a1a2e;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #333;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-bottom: 1px solid #333;
+    }
+
+    .table-header h2 {
+      font-size: 1.2rem;
+    }
+
+    .search-box {
+      padding: 10px 15px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #fff;
+      width: 250px;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: #f39c12;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 15px 20px;
+      text-align: left;
+      border-bottom: 1px solid #222;
+    }
+
+    th {
+      background: #16213e;
+      color: #888;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+    }
+
+    tr:hover {
+      background: rgba(243, 156, 18, 0.05);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+    }
+
+    .badge-warning {
+      background: rgba(241, 196, 15, 0.2);
+      color: #f1c40f;
+    }
+
+    .badge-danger {
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1a1a2e;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 500px;
+      width: 90%;
+      border: 1px solid #333;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h2 {
+      color: #f39c12;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 10px;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      border: 3px solid #333;
+      border-top: 3px solid #f39c12;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .table-container {
+        overflow-x: auto;
+      }
+
+      table {
+        min-width: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Screen -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-box">
+      <h1>Admin Login</h1>
+      <div class="error" id="loginError" style="display: none;"></div>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+    <!-- Header -->
+    <div class="header">
+      <h1>Admin Dashboard</h1>
+      <div class="header-right">
+        <span id="adminName">admin</span>
+        <button class="btn btn-secondary btn-small" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Total Users</h3>
+        <div class="value" id="statUsers">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total Donated</h3>
+        <div class="value" id="statDonated">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Completed Donations</h3>
+        <div class="value" id="statDonations">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Pending Donations</h3>
+        <div class="value" id="statPending">0</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('users')">Users</button>
+      <button class="tab" onclick="switchTab('donations')">Donations</button>
+      <button class="tab" onclick="switchTab('leaderboard')">Leaderboard</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Users Tab -->
+      <div class="tab-content active" id="usersTab">
+        <div class="table-container">
+          <div class="table-header">
+            <h2>All Users</h2>
+            <input type="text" class="search-box" placeholder="Search users..." id="userSearch" oninput="filterUsers()">
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Display Name</th>
+                <th>Email</th>
+                <th>Total Donated</th>
+                <th>Badge</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable">
+              <tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Donations Tab -->
+      <div class="tab-content" id="donationsTab">
+        <div class="table-container">
+          <div class="table-header">
+            <h2>All Donations</h2>
+            <input type="text" class="search-box" placeholder="Search donations..." id="donationSearch" oninput="filterDonations()">
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="donationsTable">
+              <tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Leaderboard Tab -->
+      <div class="tab-content" id="leaderboardTab">
+        <div class="table-container">
+          <div class="table-header">
+            <h2>Leaderboard Management</h2>
+            <button class="btn btn-primary btn-small" onclick="showAddDonationModal()">Add Manual Donation</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Display Name</th>
+                <th>Total Donated</th>
+                <th>Badge</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTable">
+              <tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div class="modal" id="editUserModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit User</h2>
+        <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+      </div>
+      <form id="editUserForm" onsubmit="handleEditUser(event)">
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="editDisplayName" required>
+        </div>
+        <div class="form-group">
+          <label>Total Donated (in cents)</label>
+          <input type="number" id="editTotalDonated" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Donation Modal -->
+  <div class="modal" id="addDonationModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Manual Donation</h2>
+        <button class="modal-close" onclick="closeModal('addDonationModal')">&times;</button>
+      </div>
+      <form id="addDonationForm" onsubmit="handleAddDonation(event)">
+        <div class="form-group">
+          <label>Select User</label>
+          <select id="donationUserId" required style="width: 100%; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #16213e; color: #fff;">
+            <option value="">Select a user...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (EUR)</label>
+          <input type="number" id="donationAmount" step="0.01" min="0.01" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addDonationModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Donation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm Delete Modal -->
+  <div class="modal" id="confirmModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Confirm Action</h2>
+        <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+      </div>
+      <p id="confirmMessage">Are you sure?</p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '';
+    let adminToken = null;
+    let allUsers = [];
+    let allDonations = [];
+
+    // Check for existing session
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('adminToken');
+      if (token) {
+        adminToken = token;
+        showDashboard();
+      }
+    });
+
+    // Login
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('loginError');
+
+      try {
+        const res = await fetch(`${API_URL}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
+        }
+
+        adminToken = data.token;
+        localStorage.setItem('adminToken', adminToken);
+        document.getElementById('adminName').textContent = data.username;
+        showDashboard();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    function logout() {
+      adminToken = null;
+      localStorage.removeItem('adminToken');
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('dashboard').classList.remove('active');
+    }
+
+    function showDashboard() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dashboard').classList.add('active');
+      loadStats();
+      loadUsers();
+      loadDonations();
+    }
+
+    // API Helpers
+    async function apiGet(endpoint) {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        throw new Error('Session expired');
+      }
+      return res.json();
+    }
+
+    async function apiPost(endpoint, data) {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify(data)
+      });
+      return res.json();
+    }
+
+    async function apiPut(endpoint, data) {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify(data)
+      });
+      return res.json();
+    }
+
+    async function apiDelete(endpoint) {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      return res.json();
+    }
+
+    // Load Data
+    async function loadStats() {
+      try {
+        const stats = await apiGet('/api/admin/stats');
+        document.getElementById('statUsers').textContent = stats.totalUsers;
+        document.getElementById('statDonated').textContent = '€' + (stats.totalDonated / 100).toLocaleString();
+        document.getElementById('statDonations').textContent = stats.totalDonations;
+        document.getElementById('statPending').textContent = stats.pendingDonations;
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        allUsers = await apiGet('/api/admin/users');
+        renderUsers(allUsers);
+        renderLeaderboard(allUsers);
+        updateUserSelect();
+      } catch (err) {
+        console.error('Failed to load users:', err);
+      }
+    }
+
+    async function loadDonations() {
+      try {
+        allDonations = await apiGet('/api/admin/donations');
+        renderDonations(allDonations);
+      } catch (err) {
+        console.error('Failed to load donations:', err);
+      }
+    }
+
+    // Render Functions
+    function renderUsers(users) {
+      const tbody = document.getElementById('usersTable');
+
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><h3>No users yet</h3></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = users.map((user, index) => `
+        <tr>
+          <td>#${index + 1}</td>
+          <td>${escapeHtml(user.displayName)}</td>
+          <td>${escapeHtml(user.email)}</td>
+          <td>€${(user.totalDonated / 100).toLocaleString()}</td>
+          <td>${user.badge ? `${user.badge.emoji} ${user.badge.name}` : '-'}</td>
+          <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+          <td class="actions">
+            <button class="btn btn-secondary btn-small" onclick="showEditUserModal('${user.id}')">Edit</button>
+            <button class="btn btn-danger btn-small" onclick="confirmDeleteUser('${user.id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderDonations(donations) {
+      const tbody = document.getElementById('donationsTable');
+
+      if (donations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><h3>No donations yet</h3></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = donations.map(d => `
+        <tr>
+          <td>${escapeHtml(d.userDisplayName || 'Unknown')}</td>
+          <td>€${(d.amount / 100).toLocaleString()}</td>
+          <td>${d.paymentMethod || '-'}</td>
+          <td><span class="badge ${d.status === 'completed' ? 'badge-success' : 'badge-warning'}">${d.status}</span></td>
+          <td>${new Date(d.createdAt).toLocaleString()}</td>
+          <td class="actions">
+            <button class="btn btn-danger btn-small" onclick="confirmDeleteDonation('${d.id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderLeaderboard(users) {
+      const tbody = document.getElementById('leaderboardTable');
+      const rankedUsers = users.filter(u => u.totalDonated > 0);
+
+      if (rankedUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><h3>No donors yet</h3></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rankedUsers.map((user, index) => `
+        <tr>
+          <td>#${index + 1}</td>
+          <td>${escapeHtml(user.displayName)}</td>
+          <td>€${(user.totalDonated / 100).toLocaleString()}</td>
+          <td>${user.badge ? `${user.badge.emoji} ${user.badge.name}` : '-'}</td>
+          <td class="actions">
+            <button class="btn btn-secondary btn-small" onclick="showEditUserModal('${user.id}')">Edit Amount</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateUserSelect() {
+      const select = document.getElementById('donationUserId');
+      select.innerHTML = '<option value="">Select a user...</option>' +
+        allUsers.map(u => `<option value="${u.id}">${escapeHtml(u.displayName)} (${escapeHtml(u.email)})</option>`).join('');
+    }
+
+    // Tab Switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+      document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+      document.getElementById(`${tab}Tab`).classList.add('active');
+    }
+
+    // Search/Filter
+    function filterUsers() {
+      const query = document.getElementById('userSearch').value.toLowerCase();
+      const filtered = allUsers.filter(u =>
+        u.displayName.toLowerCase().includes(query) ||
+        u.email.toLowerCase().includes(query)
+      );
+      renderUsers(filtered);
+    }
+
+    function filterDonations() {
+      const query = document.getElementById('donationSearch').value.toLowerCase();
+      const filtered = allDonations.filter(d =>
+        (d.userDisplayName && d.userDisplayName.toLowerCase().includes(query)) ||
+        (d.userEmail && d.userEmail.toLowerCase().includes(query))
+      );
+      renderDonations(filtered);
+    }
+
+    // Modal Functions
+    function showModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function showEditUserModal(userId) {
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('editUserId').value = userId;
+      document.getElementById('editDisplayName').value = user.displayName;
+      document.getElementById('editTotalDonated').value = user.totalDonated;
+      showModal('editUserModal');
+    }
+
+    function showAddDonationModal() {
+      document.getElementById('addDonationForm').reset();
+      showModal('addDonationModal');
+    }
+
+    // Edit User
+    async function handleEditUser(e) {
+      e.preventDefault();
+      const userId = document.getElementById('editUserId').value;
+      const displayName = document.getElementById('editDisplayName').value;
+      const totalDonated = parseInt(document.getElementById('editTotalDonated').value);
+
+      try {
+        await apiPut(`/api/admin/users/${userId}`, { displayName, totalDonated });
+        closeModal('editUserModal');
+        loadUsers();
+        loadStats();
+        alert('User updated successfully');
+      } catch (err) {
+        alert('Failed to update user: ' + err.message);
+      }
+    }
+
+    // Add Donation
+    async function handleAddDonation(e) {
+      e.preventDefault();
+      const userId = document.getElementById('donationUserId').value;
+      const amount = parseFloat(document.getElementById('donationAmount').value);
+
+      try {
+        await apiPost('/api/admin/donations', { userId, amount });
+        closeModal('addDonationModal');
+        loadUsers();
+        loadDonations();
+        loadStats();
+        alert('Donation added successfully');
+      } catch (err) {
+        alert('Failed to add donation: ' + err.message);
+      }
+    }
+
+    // Delete Confirmations
+    function confirmDeleteUser(userId) {
+      const user = allUsers.find(u => u.id === userId);
+      document.getElementById('confirmMessage').textContent =
+        `Are you sure you want to delete user "${user.displayName}"? This will also delete all their donations.`;
+
+      const btn = document.getElementById('confirmBtn');
+      btn.onclick = async () => {
+        try {
+          await apiDelete(`/api/admin/users/${userId}`);
+          closeModal('confirmModal');
+          loadUsers();
+          loadDonations();
+          loadStats();
+          alert('User deleted successfully');
+        } catch (err) {
+          alert('Failed to delete user: ' + err.message);
+        }
+      };
+
+      showModal('confirmModal');
+    }
+
+    function confirmDeleteDonation(donationId) {
+      document.getElementById('confirmMessage').textContent =
+        'Are you sure you want to delete this donation? The amount will be subtracted from the user\'s total.';
+
+      const btn = document.getElementById('confirmBtn');
+      btn.onclick = async () => {
+        try {
+          await apiDelete(`/api/admin/donations/${donationId}`);
+          closeModal('confirmModal');
+          loadUsers();
+          loadDonations();
+          loadStats();
+          alert('Donation deleted successfully');
+        } catch (err) {
+          alert('Failed to delete donation: ' + err.message);
+        }
+      };
+
+      showModal('confirmModal');
+    }
+
+    // Utility
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Close modals on outside click
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
