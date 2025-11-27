@@ -183,27 +183,37 @@
     }
 
     h1 {
-      font-size: 4rem;
+      font-size: 5rem;
       font-weight: 900;
       text-transform: uppercase;
-      letter-spacing: -2px;
+      letter-spacing: -3px;
       line-height: 1;
       margin-bottom: 15px;
       white-space: nowrap;
     }
 
     .subtitle {
-      font-size: 1rem;
+      font-size: 0.85rem;
       color: #666;
       margin-bottom: 40px;
-      line-height: 1.6;
-      max-width: 500px;
+      line-height: 1.5;
+      max-width: 450px;
       margin-left: auto;
       margin-right: auto;
     }
 
-    .subtitle strong {
-      color: #888;
+    .subtitle .highlight {
+      color: #fff;
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% {
+        text-shadow: 0 0 5px rgba(255,255,255,0.5), 0 0 10px rgba(255,255,255,0.3);
+      }
+      50% {
+        text-shadow: 0 0 15px rgba(255,255,255,0.8), 0 0 25px rgba(255,255,255,0.5), 0 0 35px rgba(255,255,255,0.3);
+      }
     }
 
     /* Big Numbers */
@@ -811,12 +821,12 @@
     /* Responsive */
     @media (max-width: 600px) {
       h1 {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
         letter-spacing: -1px;
       }
 
       .subtitle {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
       }
 
       .big-number {
@@ -851,8 +861,7 @@
     <header>
       <h1>Just Because You Can</h1>
       <p class="subtitle">
-        Prove you're <strong>better than everyone else</strong>. Climb the leaderboard.
-        Crush your rivals. Make your country #1. The only thing standing between you and the top is your wallet.
+        Prove you're <span class="highlight">better than everyone else</span>. Climb the leaderboard. Crush your rivals. Make your country #1.
       </p>
 
       <div class="big-number" id="totalDonated">€0</div>
