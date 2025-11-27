@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Just Because You Can</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      padding: 60px 20px 40px;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #f39c12 0%, #e74c3c 50%, #9b59b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 1.1rem;
+    }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f39c12;
+    }
+
+    .stat-label {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    /* Auth Section */
+    .auth-bar {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px 20px;
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 100;
+    }
+
+    .auth-bar button {
+      background: transparent;
+      border: 1px solid #f39c12;
+      color: #f39c12;
+      padding: 8px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+    }
+
+    .auth-bar button:hover {
+      background: #f39c12;
+      color: #1a1a2e;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .user-info span {
+      color: #f39c12;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1a1a2e;
+      padding: 40px;
+      border-radius: 20px;
+      max-width: 400px;
+      width: 90%;
+      position: relative;
+      border: 1px solid #333;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #888;
+    }
+
+    .modal h2 {
+      margin-bottom: 20px;
+      color: #f39c12;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #f39c12;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .checkbox-group input {
+      width: auto;
+      margin-top: 3px;
+    }
+
+    .checkbox-group label {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .checkbox-group a {
+      color: #f39c12;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #f39c12;
+      color: #f39c12;
+    }
+
+    .toggle-auth {
+      text-align: center;
+      margin-top: 15px;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .toggle-auth a {
+      color: #f39c12;
+      cursor: pointer;
+    }
+
+    /* Donation Section */
+    .donation-section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 40px;
+      margin: 30px 0;
+      text-align: center;
+    }
+
+    .donation-section h2 {
+      margin-bottom: 30px;
+      font-size: 1.8rem;
+    }
+
+    .amount-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .amount-btn {
+      padding: 12px 24px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      background: transparent;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .amount-btn:hover, .amount-btn.active {
+      border-color: #f39c12;
+      background: rgba(243, 156, 18, 0.1);
+    }
+
+    .custom-amount {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .custom-amount input {
+      width: 120px;
+      padding: 12px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      background: transparent;
+      color: #fff;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+
+    .custom-amount input:focus {
+      outline: none;
+      border-color: #f39c12;
+    }
+
+    .custom-amount span {
+      font-size: 1.2rem;
+      color: #888;
+    }
+
+    #payment-element {
+      margin: 20px 0;
+    }
+
+    .pay-btn {
+      padding: 16px 60px;
+      font-size: 1.2rem;
+      margin-top: 20px;
+    }
+
+    .payment-methods {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .payment-methods span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Badges Section */
+    .badges-section {
+      margin: 40px 0;
+    }
+
+    .badges-section h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+    }
+
+    .badge-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+    }
+
+    .badge-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(243, 156, 18, 0.3);
+    }
+
+    .badge-card.earned {
+      border-color: #f39c12;
+      background: rgba(243, 156, 18, 0.1);
+    }
+
+    .badge-emoji {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .badge-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .badge-threshold {
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    /* Leaderboard */
+    .leaderboard-section {
+      margin: 40px 0;
+    }
+
+    .leaderboard-section h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .leaderboard {
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.3s;
+    }
+
+    .leaderboard-item:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .leaderboard-item.highlight {
+      background: rgba(243, 156, 18, 0.1);
+    }
+
+    .rank {
+      width: 50px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #888;
+    }
+
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #c0c0c0; }
+    .rank-3 { color: #cd7f32; }
+
+    .leaderboard-user {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .leaderboard-badges {
+      display: flex;
+      gap: 5px;
+    }
+
+    .leaderboard-amount {
+      font-weight: 600;
+      color: #f39c12;
+    }
+
+    /* Success Modal */
+    .success-content {
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+    }
+
+    .success-message {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+    }
+
+    .people-beat {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #f39c12;
+      margin: 20px 0;
+    }
+
+    .new-badge {
+      background: rgba(243, 156, 18, 0.1);
+      border: 2px solid #f39c12;
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .new-badge h3 {
+      color: #f39c12;
+      margin-bottom: 10px;
+    }
+
+    /* Error message */
+    .error {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 3px solid #333;
+      border-top: 3px solid #f39c12;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: #888;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      .stats {
+        gap: 20px;
+      }
+
+      .donation-section {
+        padding: 20px;
+      }
+
+      .amount-btn {
+        padding: 10px 18px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Auth Bar -->
+  <div class="auth-bar" id="authBar">
+    <button onclick="showModal('loginModal')">Login / Register</button>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>Just Because You Can</h1>
+      <p class="subtitle">Donate. Compete. Because why not?</p>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value" id="totalDonated">0</div>
+          <div class="stat-label">Total Donated</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="totalDonors">0</div>
+          <div class="stat-label">Donors</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="totalDonations">0</div>
+          <div class="stat-label">Donations</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Badges Section -->
+    <section class="badges-section">
+      <h2>Earn Your Badge</h2>
+      <div class="badges-grid" id="badgesGrid">
+        <!-- Badges will be loaded here -->
+      </div>
+    </section>
+
+    <!-- Donation Section -->
+    <section class="donation-section" id="donationSection">
+      <h2>Make a Donation</h2>
+      <p style="color: #888; margin-bottom: 20px;" id="donationPrompt">Login to donate and join the leaderboard</p>
+
+      <div id="donationForm" style="display: none;">
+        <div class="amount-buttons">
+          <button class="amount-btn" data-amount="1">1</button>
+          <button class="amount-btn" data-amount="10">10</button>
+          <button class="amount-btn" data-amount="100">100</button>
+          <button class="amount-btn" data-amount="1000">1,000</button>
+          <button class="amount-btn" data-amount="10000">10,000</button>
+        </div>
+
+        <div class="custom-amount">
+          <span>EUR</span>
+          <input type="number" id="customAmount" placeholder="Amount" min="1" value="10">
+        </div>
+
+        <div id="payment-element"></div>
+
+        <div class="payment-methods">
+          <span>Apple Pay</span>
+          <span>Google Pay</span>
+          <span>Cards</span>
+          <span>PayPal</span>
+        </div>
+
+        <button class="btn btn-primary pay-btn" id="payBtn" onclick="handlePayment()">
+          Donate Now
+        </button>
+
+        <div class="loading" id="paymentLoading">
+          <div class="spinner"></div>
+          <p style="margin-top: 10px; color: #888;">Processing payment...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Leaderboard Section -->
+    <section class="leaderboard-section">
+      <h2>Leaderboard</h2>
+      <div class="leaderboard" id="leaderboard">
+        <div class="loading active" id="leaderboardLoading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p>Just Because You Can &copy; 2024</p>
+    <p><a href="#" onclick="showModal('termsModal')">Terms of Service</a> | <a href="#" onclick="showModal('privacyModal')">Privacy Policy</a></p>
+  </footer>
+
+  <!-- Login Modal -->
+  <div class="modal" id="loginModal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal('loginModal')">&times;</span>
+      <h2>Login</h2>
+      <div class="error" id="loginError" style="display: none;"></div>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="loginEmail" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPassword" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+      <p class="toggle-auth">Don't have an account? <a onclick="toggleAuth('register')">Register</a></p>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div class="modal" id="registerModal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal('registerModal')">&times;</span>
+      <h2>Register</h2>
+      <div class="error" id="registerError" style="display: none;"></div>
+      <form id="registerForm" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="registerName" placeholder="How you'll appear on the leaderboard">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="registerEmail" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="registerPassword" required minlength="6">
+        </div>
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="agreeTerms" required>
+            <label for="agreeTerms">I agree to the <a href="#" onclick="showModal('termsModal')">Terms of Service</a> and consent to receive notifications about my leaderboard position</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Register</button>
+      </form>
+      <p class="toggle-auth">Already have an account? <a onclick="toggleAuth('login')">Login</a></p>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal" id="successModal">
+    <div class="modal-content success-content">
+      <span class="modal-close" onclick="closeModal('successModal')">&times;</span>
+      <div class="success-icon">🎉</div>
+      <h2>Thank You!</h2>
+      <p class="success-message">Your donation was successful!</p>
+      <p>You beat</p>
+      <div class="people-beat" id="peopleBeat">0</div>
+      <p>people on the leaderboard!</p>
+      <div class="new-badge" id="newBadgeSection" style="display: none;">
+        <h3>New Badge Earned!</h3>
+        <div class="badge-emoji" id="newBadgeEmoji"></div>
+        <div class="badge-name" id="newBadgeName"></div>
+      </div>
+      <p style="margin-top: 20px; color: #888;">Your new rank: <strong id="newRank">#1</strong></p>
+      <button class="btn btn-primary" style="margin-top: 20px;" onclick="closeModal('successModal')">Continue</button>
+    </div>
+  </div>
+
+  <!-- Terms Modal -->
+  <div class="modal" id="termsModal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal('termsModal')">&times;</span>
+      <h2>Terms of Service</h2>
+      <div style="max-height: 400px; overflow-y: auto; color: #888; font-size: 0.9rem; line-height: 1.6;">
+        <p><strong>1. Acceptance of Terms</strong></p>
+        <p>By using this website, you agree to these terms. All donations are voluntary and non-refundable.</p>
+        <br>
+        <p><strong>2. Donations</strong></p>
+        <p>All donations are processed securely through Stripe. We do not store your payment information.</p>
+        <br>
+        <p><strong>3. Leaderboard</strong></p>
+        <p>Your display name and donation total will be visible on the public leaderboard.</p>
+        <br>
+        <p><strong>4. Notifications</strong></p>
+        <p>By registering, you consent to receive email notifications about your leaderboard position. You can unsubscribe at any time.</p>
+        <br>
+        <p><strong>5. Privacy</strong></p>
+        <p>We only collect the information necessary to process donations and maintain the leaderboard.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Modal -->
+  <div class="modal" id="privacyModal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal('privacyModal')">&times;</span>
+      <h2>Privacy Policy</h2>
+      <div style="max-height: 400px; overflow-y: auto; color: #888; font-size: 0.9rem; line-height: 1.6;">
+        <p><strong>Data We Collect</strong></p>
+        <p>- Email address (for account and notifications)</p>
+        <p>- Display name (shown on leaderboard)</p>
+        <p>- Donation history</p>
+        <br>
+        <p><strong>How We Use Your Data</strong></p>
+        <p>- To process donations</p>
+        <p>- To display the leaderboard</p>
+        <p>- To send notifications about your position</p>
+        <br>
+        <p><strong>Data Security</strong></p>
+        <p>We use industry-standard encryption and secure payment processing through Stripe.</p>
+        <br>
+        <p><strong>Your Rights</strong></p>
+        <p>You can request deletion of your account and data at any time by contacting us.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_URL = '';
+    let stripe;
+    let elements;
+    let paymentElement;
+    let currentUser = null;
+    let selectedAmount = 10;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStats();
+      loadBadges();
+      loadLeaderboard();
+      checkAuth();
+      initAmountButtons();
+    });
+
+    // Stripe initialization
+    async function initStripe() {
+      // Use your publishable key here
+      stripe = Stripe('pk_test_placeholder');
+
+      elements = stripe.elements({
+        mode: 'payment',
+        amount: selectedAmount * 100,
+        currency: 'eur',
+        appearance: {
+          theme: 'night',
+          variables: {
+            colorPrimary: '#f39c12',
+            colorBackground: '#16213e',
+            colorText: '#ffffff',
+            colorDanger: '#e74c3c',
+            borderRadius: '8px',
+          }
+        }
+      });
+
+      paymentElement = elements.create('payment', {
+        layout: 'tabs'
+      });
+      paymentElement.mount('#payment-element');
+    }
+
+    // Amount buttons
+    function initAmountButtons() {
+      document.querySelectorAll('.amount-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedAmount = parseInt(btn.dataset.amount);
+          document.getElementById('customAmount').value = selectedAmount;
+          updatePaymentAmount();
+        });
+      });
+
+      document.getElementById('customAmount').addEventListener('change', (e) => {
+        selectedAmount = parseInt(e.target.value) || 1;
+        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+        updatePaymentAmount();
+      });
+    }
+
+    function updatePaymentAmount() {
+      if (elements) {
+        elements.update({ amount: selectedAmount * 100 });
+      }
+    }
+
+    // Auth functions
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+
+      if (token && user) {
+        currentUser = JSON.parse(user);
+        updateAuthUI(true);
+        initStripe();
+      }
+    }
+
+    function updateAuthUI(loggedIn) {
+      const authBar = document.getElementById('authBar');
+      const donationForm = document.getElementById('donationForm');
+      const donationPrompt = document.getElementById('donationPrompt');
+
+      if (loggedIn && currentUser) {
+        authBar.innerHTML = `
+          <div class="user-info">
+            <span>${currentUser.displayName}</span>
+            <button onclick="logout()">Logout</button>
+          </div>
+        `;
+        donationForm.style.display = 'block';
+        donationPrompt.style.display = 'none';
+      } else {
+        authBar.innerHTML = `<button onclick="showModal('loginModal')">Login / Register</button>`;
+        donationForm.style.display = 'none';
+        donationPrompt.style.display = 'block';
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const errorEl = document.getElementById('loginError');
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
+
+        closeModal('loginModal');
+        updateAuthUI(true);
+        initStripe();
+        loadLeaderboard();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const displayName = document.getElementById('registerName').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const agreeTerms = document.getElementById('agreeTerms').checked;
+      const errorEl = document.getElementById('registerError');
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, displayName, agreeToTerms: agreeTerms })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
+
+        closeModal('registerModal');
+        updateAuthUI(true);
+        initStripe();
+        loadLeaderboard();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      currentUser = null;
+      updateAuthUI(false);
+      loadLeaderboard();
+    }
+
+    // Payment
+    async function handlePayment() {
+      if (!currentUser) {
+        showModal('loginModal');
+        return;
+      }
+
+      const amount = parseInt(document.getElementById('customAmount').value);
+      if (!amount || amount < 1) {
+        alert('Please enter a valid amount');
+        return;
+      }
+
+      const payBtn = document.getElementById('payBtn');
+      const loading = document.getElementById('paymentLoading');
+
+      payBtn.style.display = 'none';
+      loading.classList.add('active');
+
+      try {
+        // Create payment intent
+        const res = await fetch(`${API_URL}/api/payments/create-intent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ amount })
+        });
+
+        const { clientSecret, error: createError } = await res.json();
+
+        if (createError) {
+          throw new Error(createError);
+        }
+
+        // Confirm payment
+        const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          clientSecret,
+          confirmParams: {
+            return_url: window.location.href
+          },
+          redirect: 'if_required'
+        });
+
+        if (stripeError) {
+          throw new Error(stripeError.message);
+        }
+
+        // Confirm on backend
+        const confirmRes = await fetch(`${API_URL}/api/payments/confirm`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id })
+        });
+
+        const confirmData = await confirmRes.json();
+
+        if (!confirmRes.ok) {
+          throw new Error(confirmData.error);
+        }
+
+        // Show success
+        showSuccessModal(confirmData);
+
+        // Refresh data
+        loadStats();
+        loadLeaderboard();
+
+        // Update user data
+        currentUser.totalDonated = confirmData.totalDonated;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+
+      } catch (err) {
+        alert('Payment failed: ' + err.message);
+      } finally {
+        payBtn.style.display = 'block';
+        loading.classList.remove('active');
+      }
+    }
+
+    function showSuccessModal(data) {
+      document.getElementById('peopleBeat').textContent = data.peopleBeat || 0;
+      document.getElementById('newRank').textContent = '#' + data.newRank;
+
+      const badgeSection = document.getElementById('newBadgeSection');
+      if (data.newBadge) {
+        badgeSection.style.display = 'block';
+        document.getElementById('newBadgeEmoji').textContent = data.newBadge.emoji;
+        document.getElementById('newBadgeName').textContent = data.newBadge.name;
+      } else {
+        badgeSection.style.display = 'none';
+      }
+
+      showModal('successModal');
+    }
+
+    // Load data functions
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_URL}/api/stats`);
+        const data = await res.json();
+
+        document.getElementById('totalDonated').textContent = '€' + (data.totalDonated / 100).toLocaleString();
+        document.getElementById('totalDonors').textContent = data.totalDonors.toLocaleString();
+        document.getElementById('totalDonations').textContent = data.totalDonations.toLocaleString();
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    function loadBadges() {
+      const badges = [
+        { threshold: 1, name: 'Starter', emoji: '🌱', color: '#78909c' },
+        { threshold: 10, name: 'Supporter', emoji: '⭐', color: '#4caf50' },
+        { threshold: 100, name: 'Champion', emoji: '🏆', color: '#2196f3' },
+        { threshold: 1000, name: 'Hero', emoji: '💎', color: '#9c27b0' },
+        { threshold: 10000, name: 'Legend', emoji: '👑', color: '#ff9800' },
+        { threshold: 100000, name: 'Titan', emoji: '🔥', color: '#f44336' },
+        { threshold: 1000000, name: 'Immortal', emoji: '🌟', color: '#ffd700' }
+      ];
+
+      const grid = document.getElementById('badgesGrid');
+      const userTotal = currentUser ? currentUser.totalDonated / 100 : 0;
+
+      grid.innerHTML = badges.map(badge => `
+        <div class="badge-card ${userTotal >= badge.threshold ? 'earned' : ''}">
+          <div class="badge-emoji">${badge.emoji}</div>
+          <div class="badge-name" style="color: ${badge.color}">${badge.name}</div>
+          <div class="badge-threshold">€${badge.threshold.toLocaleString()}+</div>
+        </div>
+      `).join('');
+    }
+
+    async function loadLeaderboard() {
+      const container = document.getElementById('leaderboard');
+      container.innerHTML = '<div class="loading active"><div class="spinner"></div></div>';
+
+      try {
+        const res = await fetch(`${API_URL}/api/leaderboard?limit=50`);
+        const data = await res.json();
+
+        if (data.leaderboard.length === 0) {
+          container.innerHTML = '<div style="padding: 40px; text-align: center; color: #888;">No donations yet. Be the first!</div>';
+          return;
+        }
+
+        container.innerHTML = data.leaderboard.map(user => `
+          <div class="leaderboard-item ${currentUser && user.displayName === currentUser.displayName ? 'highlight' : ''}">
+            <div class="rank ${user.rank <= 3 ? 'rank-' + user.rank : ''}">#${user.rank}</div>
+            <div class="leaderboard-user">
+              <span>${user.displayName}</span>
+              <div class="leaderboard-badges">
+                ${user.allBadges.map(b => `<span title="${b.name}">${b.emoji}</span>`).join('')}
+              </div>
+            </div>
+            <div class="leaderboard-amount">€${(user.totalDonated / 100).toLocaleString()}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load leaderboard:', err);
+        container.innerHTML = '<div style="padding: 40px; text-align: center; color: #888;">Failed to load leaderboard</div>';
+      }
+    }
+
+    // Modal functions
+    function showModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+      // Clear form errors
+      const errorEl = document.querySelector(`#${id} .error`);
+      if (errorEl) {
+        errorEl.style.display = 'none';
+      }
+    }
+
+    function toggleAuth(type) {
+      if (type === 'register') {
+        closeModal('loginModal');
+        showModal('registerModal');
+      } else {
+        closeModal('registerModal');
+        showModal('loginModal');
+      }
+    }
+
+    // Close modals on outside click
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
