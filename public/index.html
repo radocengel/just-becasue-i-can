@@ -188,7 +188,22 @@
       text-transform: uppercase;
       letter-spacing: -2px;
       line-height: 1;
+      margin-bottom: 15px;
+      white-space: nowrap;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #666;
       margin-bottom: 40px;
+      line-height: 1.6;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .subtitle strong {
+      color: #888;
     }
 
     /* Big Numbers */
@@ -796,7 +811,12 @@
     /* Responsive */
     @media (max-width: 600px) {
       h1 {
-        font-size: 2.5rem;
+        font-size: 1.8rem;
+        letter-spacing: -1px;
+      }
+
+      .subtitle {
+        font-size: 0.85rem;
       }
 
       .big-number {
@@ -830,6 +850,10 @@
     <!-- Header -->
     <header>
       <h1>Just Because You Can</h1>
+      <p class="subtitle">
+        Prove you're <strong>better than everyone else</strong>. Climb the leaderboard.
+        Crush your rivals. Make your country #1. The only thing standing between you and the top is your wallet.
+      </p>
 
       <div class="big-number" id="totalDonated">€0</div>
       <div class="big-number-label">Total Donated</div>
