@@ -705,9 +705,7 @@
 </head>
 <body>
   <!-- Auth Bar -->
-  <div class="auth-bar" id="authBar">
-    <button onclick="showModal('loginModal')">Login</button>
-  </div>
+  <div class="auth-bar" id="authBar"></div>
 
   <div class="container">
     <!-- Header -->
@@ -731,10 +729,37 @@
 
     <!-- Donation Section -->
     <section class="donation-section" id="donationSection">
-      <h2>Donate</h2>
-      <p class="donation-prompt" id="donationPrompt">Login to donate and join the leaderboard</p>
+      <!-- Quick Start Form (not logged in) -->
+      <div id="quickStartForm">
+        <h2>Join the Leaderboard</h2>
 
+        <div class="form-group" style="max-width: 300px; margin: 20px auto;">
+          <input type="text" id="nicknameInput" placeholder="Your nickname" style="width: 100%; padding: 15px; border: 1px solid #333; background: #000; color: #fff; font-size: 1.1rem; text-align: center;">
+        </div>
+
+        <div class="form-group" style="max-width: 300px; margin: 20px auto;">
+          <select id="countryInput" style="width: 100%; padding: 15px; border: 1px solid #333; background: #000; color: #666; font-size: 1rem; cursor: pointer;">
+            <option value="">Select your country (optional)</option>
+          </select>
+          <p style="color: #444; font-size: 0.75rem; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px;">Fight for your country's honor</p>
+        </div>
+
+        <button class="pay-btn" onclick="handleQuickStart()" style="margin-top: 20px;">
+          Start Donating
+        </button>
+
+        <p style="color: #444; font-size: 0.8rem; margin-top: 20px;">
+          Already have an account? <a href="#" onclick="showModal('loginModal')" style="color: #fff;">Login</a>
+        </p>
+      </div>
+
+      <!-- Donation Form (logged in) -->
       <div id="donationForm" style="display: none;">
+        <div id="userWelcome" style="margin-bottom: 20px;">
+          <span id="welcomeName" style="color: #fff;"></span>
+          <span id="welcomeCountry" style="color: #666; margin-left: 5px;"></span>
+        </div>
+
         <div class="amount-input-wrapper">
           <span class="currency-symbol">€</span>
           <input type="number" class="amount-input" id="customAmount" placeholder="0" min="1" value="10">
@@ -763,6 +788,13 @@
           <span>Card</span>
           <span>Apple Pay</span>
           <span>Google Pay</span>
+        </div>
+
+        <div id="guestUpgrade" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #222; display: none;">
+          <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">Want to track your donations?</p>
+          <button onclick="showModal('upgradeModal')" style="background: transparent; border: 1px solid #333; color: #888; padding: 10px 20px; cursor: pointer; font-size: 0.85rem;">
+            Save My Progress
+          </button>
         </div>
       </div>
     </section>
@@ -793,6 +825,7 @@
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
       <h2>Login</h2>
+      <p style="color: #666; font-size: 0.85rem; margin-bottom: 20px;">For users who saved their progress</p>
       <div class="error" id="loginError" style="display: none;"></div>
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
@@ -805,38 +838,27 @@
         </div>
         <button type="submit" class="btn btn-primary">Login</button>
       </form>
-      <p class="toggle-auth">No account? <a onclick="toggleAuth('register')">Register</a></p>
     </div>
   </div>
 
-  <!-- Register Modal -->
-  <div class="modal" id="registerModal">
+  <!-- Upgrade Modal (save progress) -->
+  <div class="modal" id="upgradeModal">
     <div class="modal-content">
-      <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
-      <h2>Register</h2>
-      <div class="error" id="registerError" style="display: none;"></div>
-      <form id="registerForm" onsubmit="handleRegister(event)">
-        <div class="form-group">
-          <label>Display Name</label>
-          <input type="text" id="registerName" placeholder="Leaderboard name">
-        </div>
+      <button class="modal-close" onclick="closeModal('upgradeModal')">&times;</button>
+      <h2>Save Progress</h2>
+      <p style="color: #666; font-size: 0.85rem; margin-bottom: 20px;">Add email & password to keep your donations across devices</p>
+      <div class="error" id="upgradeError" style="display: none;"></div>
+      <form id="upgradeForm" onsubmit="handleUpgrade(event)">
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="registerEmail" required>
+          <input type="email" id="upgradeEmail" required>
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="registerPassword" required minlength="6">
+          <input type="password" id="upgradePassword" required minlength="6" placeholder="Min 6 characters">
         </div>
-        <div class="form-group">
-          <div class="checkbox-group">
-            <input type="checkbox" id="agreeTerms" required>
-            <label for="agreeTerms">I agree to the <a href="#" onclick="showModal('termsModal')">Terms</a> and consent to notifications</label>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Register</button>
+        <button type="submit" class="btn btn-primary">Save My Account</button>
       </form>
-      <p class="toggle-auth">Have an account? <a onclick="toggleAuth('login')">Login</a></p>
     </div>
   </div>
 
@@ -914,6 +936,7 @@
     let selectedAmount = 10;
 
     document.addEventListener('DOMContentLoaded', () => {
+      populateCountries();
       loadStats();
       loadBadges();
       loadLeaderboard();
@@ -978,6 +1001,43 @@
       }
     }
 
+    // Country list
+    const COUNTRIES = [
+      'Afghanistan', 'Albania', 'Algeria', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
+      'Bangladesh', 'Belarus', 'Belgium', 'Bolivia', 'Bosnia', 'Brazil', 'Bulgaria',
+      'Cambodia', 'Canada', 'Chile', 'China', 'Colombia', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic',
+      'Denmark', 'Dominican Republic',
+      'Ecuador', 'Egypt', 'El Salvador', 'Estonia', 'Ethiopia',
+      'Finland', 'France',
+      'Georgia', 'Germany', 'Ghana', 'Greece', 'Guatemala',
+      'Honduras', 'Hong Kong', 'Hungary',
+      'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy',
+      'Jamaica', 'Japan', 'Jordan',
+      'Kazakhstan', 'Kenya', 'Kuwait',
+      'Latvia', 'Lebanon', 'Lithuania', 'Luxembourg',
+      'Malaysia', 'Mexico', 'Moldova', 'Monaco', 'Mongolia', 'Morocco',
+      'Nepal', 'Netherlands', 'New Zealand', 'Nigeria', 'North Korea', 'Norway',
+      'Pakistan', 'Panama', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
+      'Qatar',
+      'Romania', 'Russia',
+      'Saudi Arabia', 'Serbia', 'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea', 'Spain', 'Sri Lanka', 'Sweden', 'Switzerland', 'Syria',
+      'Taiwan', 'Thailand', 'Turkey',
+      'UAE', 'UK', 'Ukraine', 'Uruguay', 'USA', 'Uzbekistan',
+      'Venezuela', 'Vietnam',
+      'Yemen',
+      'Zimbabwe'
+    ];
+
+    function populateCountries() {
+      const select = document.getElementById('countryInput');
+      COUNTRIES.forEach(country => {
+        const option = document.createElement('option');
+        option.value = country;
+        option.textContent = country;
+        select.appendChild(option);
+      });
+    }
+
     function checkAuth() {
       const token = localStorage.getItem('token');
       const user = localStorage.getItem('user');
@@ -986,29 +1046,75 @@
         currentUser = JSON.parse(user);
         updateAuthUI(true);
         initStripe();
+      } else {
+        updateAuthUI(false);
       }
     }
 
     function updateAuthUI(loggedIn) {
       const authBar = document.getElementById('authBar');
+      const quickStartForm = document.getElementById('quickStartForm');
       const donationForm = document.getElementById('donationForm');
-      const donationPrompt = document.getElementById('donationPrompt');
+      const guestUpgrade = document.getElementById('guestUpgrade');
 
       if (loggedIn && currentUser) {
         authBar.innerHTML = `
           <div class="user-info">
             <span>${currentUser.displayName}</span>
+            ${currentUser.country ? `<span style="color: #666;">(${currentUser.country})</span>` : ''}
             <button onclick="logout()">Logout</button>
           </div>
         `;
+        quickStartForm.style.display = 'none';
         donationForm.style.display = 'block';
-        donationPrompt.style.display = 'none';
+
+        // Show welcome
+        document.getElementById('welcomeName').textContent = currentUser.displayName;
+        document.getElementById('welcomeCountry').textContent = currentUser.country ? `(${currentUser.country})` : '';
+
+        // Show upgrade option for guests
+        if (currentUser.isGuest) {
+          guestUpgrade.style.display = 'block';
+        } else {
+          guestUpgrade.style.display = 'none';
+        }
       } else {
-        authBar.innerHTML = `<button onclick="showModal('loginModal')">Login</button>`;
+        authBar.innerHTML = '';
+        quickStartForm.style.display = 'block';
         donationForm.style.display = 'none';
-        donationPrompt.style.display = 'block';
       }
       loadBadges();
+    }
+
+    async function handleQuickStart() {
+      const nickname = document.getElementById('nicknameInput').value.trim();
+      const country = document.getElementById('countryInput').value;
+
+      if (!nickname || nickname.length < 2) {
+        alert('Please enter a nickname (at least 2 characters)');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/quick-start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname, country: country || null })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
+
+        updateAuthUI(true);
+        initStripe();
+        loadLeaderboard();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
     }
 
     async function handleLogin(e) {
@@ -1041,19 +1147,20 @@
       }
     }
 
-    async function handleRegister(e) {
+    async function handleUpgrade(e) {
       e.preventDefault();
-      const displayName = document.getElementById('registerName').value;
-      const email = document.getElementById('registerEmail').value;
-      const password = document.getElementById('registerPassword').value;
-      const agreeTerms = document.getElementById('agreeTerms').checked;
-      const errorEl = document.getElementById('registerError');
+      const email = document.getElementById('upgradeEmail').value;
+      const password = document.getElementById('upgradePassword').value;
+      const errorEl = document.getElementById('upgradeError');
 
       try {
-        const res = await fetch(`${API_URL}/api/auth/register`, {
+        const res = await fetch(`${API_URL}/api/auth/upgrade`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, displayName, agreeToTerms: agreeTerms })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ email, password })
         });
 
         const data = await res.json();
@@ -1063,10 +1170,9 @@
         localStorage.setItem('user', JSON.stringify(data.user));
         currentUser = data.user;
 
-        closeModal('registerModal');
+        closeModal('upgradeModal');
         updateAuthUI(true);
-        initStripe();
-        loadLeaderboard();
+        alert('Account saved! You can now login from any device.');
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.style.display = 'block';
@@ -1279,6 +1385,7 @@
             <div class="rank">${user.rank}</div>
             <div class="leaderboard-user">
               <span class="leaderboard-name">${user.displayName}</span>
+              ${user.country ? `<span style="color: #444; font-size: 0.8rem; margin-left: 5px;">${user.country}</span>` : ''}
               <div class="leaderboard-badges">
                 ${user.allBadges.map(b => `<span title="${b.name}">${b.emoji}</span>`).join('')}
               </div>
@@ -1300,16 +1407,6 @@
       document.getElementById(id).classList.remove('active');
       const errorEl = document.querySelector(`#${id} .error`);
       if (errorEl) errorEl.style.display = 'none';
-    }
-
-    function toggleAuth(type) {
-      if (type === 'register') {
-        closeModal('loginModal');
-        showModal('registerModal');
-      } else {
-        closeModal('registerModal');
-        showModal('loginModal');
-      }
     }
 
     document.querySelectorAll('.modal').forEach(modal => {

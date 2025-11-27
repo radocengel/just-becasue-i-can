@@ -22,12 +22,14 @@ const db = new Database('donations.db');
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    display_name TEXT,
+    email TEXT UNIQUE,
+    password TEXT,
+    display_name TEXT NOT NULL,
+    country TEXT,
     total_donated INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    notifications_enabled INTEGER DEFAULT 1
+    notifications_enabled INTEGER DEFAULT 1,
+    is_guest INTEGER DEFAULT 1
   );
 
   CREATE TABLE IF NOT EXISTS donations (
@@ -51,7 +53,17 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_users_total ON users(total_donated DESC);
   CREATE INDEX IF NOT EXISTS idx_donations_user ON donations(user_id);
+  CREATE INDEX IF NOT EXISTS idx_users_country ON users(country);
 `);
+
+// Add country column if it doesn't exist (migration for existing db)
+try {
+  db.exec('ALTER TABLE users ADD COLUMN country TEXT');
+} catch (e) { /* column already exists */ }
+
+try {
+  db.exec('ALTER TABLE users ADD COLUMN is_guest INTEGER DEFAULT 1');
+} catch (e) { /* column already exists */ }
 
 // Create default admin if none exists
 const adminExists = db.prepare('SELECT id FROM admins LIMIT 1').get();
@@ -125,44 +137,32 @@ function getAllBadges(totalDonated) {
 
 // ============ AUTH ROUTES ============
 
-// Register
-app.post('/api/auth/register', async (req, res) => {
+// Quick start - just nickname and optional country (guest mode)
+app.post('/api/auth/quick-start', (req, res) => {
   try {
-    const { email, password, displayName, agreeToTerms } = req.body;
+    const { nickname, country } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password required' });
+    if (!nickname || nickname.trim().length < 2) {
+      return res.status(400).json({ error: 'Nickname must be at least 2 characters' });
     }
 
-    if (!agreeToTerms) {
-      return res.status(400).json({ error: 'You must agree to the terms' });
-    }
-
-    // Check if user exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email already registered' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
+    // Create guest user
     const userId = uuidv4();
     db.prepare(
-      'INSERT INTO users (id, email, password, display_name) VALUES (?, ?, ?, ?)'
-    ).run(userId, email, hashedPassword, displayName || email.split('@')[0]);
+      'INSERT INTO users (id, display_name, country, is_guest) VALUES (?, ?, ?, 1)'
+    ).run(userId, nickname.trim(), country || null);
 
     // Generate token
-    const token = jwt.sign({ id: userId, email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId, isGuest: true }, JWT_SECRET, { expiresIn: '30d' });
 
     res.json({
       token,
       user: {
         id: userId,
-        email,
-        displayName: displayName || email.split('@')[0],
-        totalDonated: 0
+        displayName: nickname.trim(),
+        country: country || null,
+        totalDonated: 0,
+        isGuest: true
       }
     });
   } catch (err) {
@@ -171,13 +171,61 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login
+// Upgrade guest to full account
+app.post('/api/auth/upgrade', authenticateToken, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Check if email already exists
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.user.id);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Hash password and update user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.prepare(
+      'UPDATE users SET email = ?, password = ?, is_guest = 0 WHERE id = ?'
+    ).run(email, hashedPassword, req.user.id);
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+
+    // Generate new token
+    const token = jwt.sign({ id: user.id, email, isGuest: false }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.display_name,
+        country: user.country,
+        totalDonated: user.total_donated,
+        isGuest: false,
+        badges: getAllBadges(user.total_donated)
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Login (for registered users)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    if (!user) {
+    if (!user || user.is_guest) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
@@ -186,7 +234,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, email: user.email, isGuest: false }, JWT_SECRET, { expiresIn: '30d' });
 
     res.json({
       token,
@@ -194,7 +242,9 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         email: user.email,
         displayName: user.display_name,
+        country: user.country,
         totalDonated: user.total_donated,
+        isGuest: false,
         badges: getAllBadges(user.total_donated)
       }
     });
@@ -206,7 +256,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Get current user
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  const user = db.prepare('SELECT id, email, display_name, total_donated FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
@@ -214,7 +264,9 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
     id: user.id,
     email: user.email,
     displayName: user.display_name,
+    country: user.country,
     totalDonated: user.total_donated,
+    isGuest: user.is_guest === 1,
     badges: getAllBadges(user.total_donated),
     rank: getUserRank(user.id)
   });
@@ -367,7 +419,7 @@ app.get('/api/leaderboard', (req, res) => {
   const offset = parseInt(req.query.offset) || 0;
 
   const users = db.prepare(`
-    SELECT id, display_name, total_donated, created_at
+    SELECT id, display_name, country, total_donated, created_at
     FROM users
     WHERE total_donated > 0
     ORDER BY total_donated DESC, created_at ASC
@@ -379,15 +431,27 @@ app.get('/api/leaderboard', (req, res) => {
   const leaderboard = users.map((user, index) => ({
     rank: offset + index + 1,
     displayName: user.display_name,
+    country: user.country,
     totalDonated: user.total_donated,
     badge: getBadge(user.total_donated),
     allBadges: getAllBadges(user.total_donated)
   }));
 
+  // Country leaderboard
+  const countryStats = db.prepare(`
+    SELECT country, SUM(total_donated) as total, COUNT(*) as donors
+    FROM users
+    WHERE total_donated > 0 AND country IS NOT NULL
+    GROUP BY country
+    ORDER BY total DESC
+    LIMIT 10
+  `).all();
+
   res.json({
     leaderboard,
     total: total.count,
-    badges: BADGES
+    badges: BADGES,
+    countries: countryStats
   });
 });
 
