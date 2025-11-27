@@ -325,6 +325,37 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   });
 });
 
+// Update email
+app.post('/api/auth/update-email', authenticateToken, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if user is a guest
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (user.is_guest === 1) {
+      return res.status(400).json({ error: 'Guests cannot update email. Please register first.' });
+    }
+
+    // Check if email already exists for another user
+    const existingUser = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.user.id);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+
+    // Update email
+    db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, req.user.id);
+
+    res.json({ success: true, email });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ============ PAYMENT ROUTES ============
 
 // Create Stripe Payment Intent

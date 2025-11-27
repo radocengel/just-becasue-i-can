@@ -59,6 +59,123 @@
       color: #fff;
     }
 
+    .profile-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #222;
+      border: 2px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 1.2rem;
+    }
+
+    .profile-icon:hover {
+      border-color: #fff;
+      background: #333;
+    }
+
+    /* Profile Modal Styles */
+    .profile-content {
+      text-align: left;
+    }
+
+    .profile-badge {
+      text-align: center;
+      padding: 30px;
+      background: #111;
+      border: 1px solid #222;
+      margin-bottom: 25px;
+    }
+
+    .profile-badge-emoji {
+      font-size: 4rem;
+      margin-bottom: 10px;
+    }
+
+    .profile-badge-name {
+      font-size: 1rem;
+      color: #fff;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .profile-stat {
+      background: #111;
+      border: 1px solid #222;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .profile-stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .profile-stat-label {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    .profile-info {
+      margin-bottom: 20px;
+    }
+
+    .profile-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #222;
+    }
+
+    .profile-row:last-child {
+      border-bottom: none;
+    }
+
+    .profile-label {
+      color: #666;
+      font-size: 0.85rem;
+    }
+
+    .profile-value {
+      color: #fff;
+      font-size: 0.85rem;
+    }
+
+    .profile-next-badge {
+      background: #0a0a0a;
+      border: 1px solid #222;
+      padding: 15px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .profile-next-badge p {
+      color: #666;
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+    }
+
+    .profile-next-badge .next-amount {
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
     /* Header */
     header {
       text-align: center;
@@ -862,6 +979,68 @@
     <p><a href="#" onclick="showModal('termsModal')">Terms</a> · <a href="#" onclick="showModal('privacyModal')">Privacy</a></p>
   </footer>
 
+  <!-- Profile Modal -->
+  <div class="modal" id="profileModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <button class="modal-close" onclick="closeModal('profileModal')">&times;</button>
+      <h2>Your Profile</h2>
+
+      <div class="profile-content">
+        <!-- Badge Section -->
+        <div class="profile-badge" id="profileBadgeSection">
+          <div class="profile-badge-emoji">👤</div>
+          <div class="profile-badge-name">No Badge Yet</div>
+        </div>
+
+        <!-- Stats -->
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profileTotalAmount">€0</div>
+            <div class="profile-stat-label">Total Donated</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-value" id="profileRank">-</div>
+            <div class="profile-stat-label">Your Rank</div>
+          </div>
+        </div>
+
+        <!-- Next Badge -->
+        <div class="profile-next-badge" id="profileNextBadge">
+          <p>Next badge: 🐣 Lil Baby Slay</p>
+          <div class="next-amount">€1 more needed</div>
+        </div>
+
+        <!-- User Info -->
+        <div class="profile-info">
+          <div class="profile-row">
+            <span class="profile-label">Name</span>
+            <span class="profile-value" id="profileName">-</span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-label">Country</span>
+            <span class="profile-value" id="profileCountry">-</span>
+          </div>
+          <div class="profile-row">
+            <span class="profile-label">Email</span>
+            <span class="profile-value">
+              <span id="profileEmail">-</span>
+              <a href="#" id="emailEditBtn" onclick="toggleEmailEdit(); return false;" style="color: #666; margin-left: 8px; font-size: 0.75rem;">edit</a>
+            </span>
+          </div>
+        </div>
+
+        <!-- Email Edit Section -->
+        <div id="emailEditSection" style="display: none; margin-bottom: 20px;">
+          <div class="error" id="emailUpdateError" style="display: none; margin-bottom: 10px;"></div>
+          <div style="display: flex; gap: 10px;">
+            <input type="email" id="profileEmailInput" placeholder="New email" style="flex: 1; padding: 10px; border: 1px solid #333; background: #000; color: #fff;">
+            <button onclick="updateEmail()" style="padding: 10px 15px; background: #fff; color: #000; border: none; cursor: pointer;">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Register Modal -->
   <div class="modal" id="registerModal">
     <div class="modal-content">
@@ -1138,10 +1317,15 @@
       const guestUpgrade = document.getElementById('guestUpgrade');
 
       if (loggedIn && currentUser) {
+        // Get current badge emoji for profile icon
+        const userBadge = getCurrentBadge(currentUser.totalDonated || 0);
+        const badgeEmoji = userBadge ? userBadge.emoji : '👤';
+
         authBar.innerHTML = `
           <div class="user-info">
-            <span>${currentUser.displayName}</span>
-            ${currentUser.country ? `<span style="color: #666;">(${currentUser.country})</span>` : ''}
+            <div class="profile-icon" onclick="showProfile()" title="View Profile">
+              ${badgeEmoji}
+            </div>
             <button onclick="logout()">Logout</button>
           </div>
         `;
@@ -1588,6 +1772,151 @@
         description: 'Ten million euros. You broke the simulation. The devs are checking the logs. You\'re not even playing by the rules anymore—you ARE the rules. This is beyond unhinged. This is transcendent chaos. You won the internet forever.'
       }
     ];
+
+    // Helper function to get current badge
+    function getCurrentBadge(totalDonatedCents) {
+      const totalEuros = totalDonatedCents / 100;
+      let currentBadge = null;
+      for (const badge of BADGES_DATA) {
+        if (totalEuros >= badge.threshold) {
+          currentBadge = badge;
+        }
+      }
+      return currentBadge;
+    }
+
+    // Helper function to get next badge
+    function getNextBadge(totalDonatedCents) {
+      const totalEuros = totalDonatedCents / 100;
+      for (const badge of BADGES_DATA) {
+        if (totalEuros < badge.threshold) {
+          return badge;
+        }
+      }
+      return null; // Max badge reached
+    }
+
+    // Show profile modal
+    async function showProfile() {
+      if (!currentUser) return;
+
+      // Fetch latest user data including rank
+      try {
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) {
+          const userData = await res.json();
+          currentUser.totalDonated = userData.totalDonated;
+          currentUser.rank = userData.rank;
+          localStorage.setItem('user', JSON.stringify(currentUser));
+        }
+      } catch (err) {
+        console.error('Failed to fetch user data:', err);
+      }
+
+      const totalCents = currentUser.totalDonated || 0;
+      const totalEuros = totalCents / 100;
+      const currentBadge = getCurrentBadge(totalCents);
+      const nextBadge = getNextBadge(totalCents);
+
+      // Update rank
+      document.getElementById('profileRank').textContent = currentUser.rank ? '#' + currentUser.rank : '-';
+
+      // Update profile modal content
+      const badgeSection = document.getElementById('profileBadgeSection');
+      if (currentBadge) {
+        badgeSection.innerHTML = `
+          <div class="profile-badge-emoji">${currentBadge.emoji}</div>
+          <div class="profile-badge-name">${currentBadge.name}</div>
+        `;
+      } else {
+        badgeSection.innerHTML = `
+          <div class="profile-badge-emoji">👤</div>
+          <div class="profile-badge-name">No Badge Yet</div>
+        `;
+      }
+
+      document.getElementById('profileTotalAmount').textContent = '€' + totalEuros.toLocaleString();
+      document.getElementById('profileName').textContent = currentUser.displayName;
+      document.getElementById('profileCountry').textContent = currentUser.country || 'Not set';
+      document.getElementById('profileEmail').textContent = currentUser.email || 'Not set';
+      document.getElementById('profileEmailInput').value = currentUser.email || '';
+
+      // Next badge section
+      const nextBadgeSection = document.getElementById('profileNextBadge');
+      if (nextBadge) {
+        const amountNeeded = nextBadge.threshold - totalEuros;
+        nextBadgeSection.innerHTML = `
+          <p>Next badge: ${nextBadge.emoji} ${nextBadge.name}</p>
+          <div class="next-amount">€${amountNeeded.toLocaleString()} more needed</div>
+        `;
+        nextBadgeSection.style.display = 'block';
+      } else {
+        nextBadgeSection.innerHTML = `
+          <p>🏆 You've unlocked all badges!</p>
+          <div class="next-amount">Maximum Legend Status</div>
+        `;
+        nextBadgeSection.style.display = 'block';
+      }
+
+      // Show/hide email edit based on guest status
+      const emailEditBtn = document.getElementById('emailEditBtn');
+      const emailEditSection = document.getElementById('emailEditSection');
+      if (currentUser.isGuest) {
+        emailEditBtn.style.display = 'none';
+        document.getElementById('profileEmail').textContent = 'Register to add email';
+      } else {
+        emailEditBtn.style.display = 'inline';
+      }
+      emailEditSection.style.display = 'none';
+
+      showModal('profileModal');
+    }
+
+    // Toggle email edit
+    function toggleEmailEdit() {
+      const section = document.getElementById('emailEditSection');
+      section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Update email
+    async function updateEmail() {
+      const newEmail = document.getElementById('profileEmailInput').value.trim();
+      const errorEl = document.getElementById('emailUpdateError');
+      errorEl.style.display = 'none';
+
+      if (!newEmail) {
+        errorEl.textContent = 'Email is required';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/update-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ email: newEmail })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Update local user data
+        currentUser.email = newEmail;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+
+        document.getElementById('profileEmail').textContent = newEmail;
+        document.getElementById('emailEditSection').style.display = 'none';
+        alert('Email updated successfully!');
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
 
     function loadBadges() {
       const grid = document.getElementById('badgesGrid');
