@@ -250,21 +250,12 @@
     }
 
     .badges-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      display: flex;
+      justify-content: center;
       gap: 10px;
-    }
-
-    @media (max-width: 700px) {
-      .badges-grid {
-        grid-template-columns: repeat(4, 1fr);
-      }
-    }
-
-    @media (max-width: 400px) {
-      .badges-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      flex-wrap: wrap;
+      max-width: 700px;
+      margin: 0 auto;
     }
 
     .badge-card {
@@ -272,12 +263,21 @@
       border: 1px solid #222;
       padding: 20px 10px;
       text-align: center;
-      aspect-ratio: 1;
+      width: 90px;
+      height: 90px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .badge-card:hover {
+      transform: scale(1.15);
+      border-color: #fff;
+      z-index: 10;
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
     }
 
     .badge-card.earned {
@@ -286,17 +286,22 @@
     }
 
     .badge-emoji {
-      font-size: 2rem;
-      margin-bottom: 8px;
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+      transition: transform 0.2s ease;
+    }
+
+    .badge-card:hover .badge-emoji {
+      transform: scale(1.1);
     }
 
     .badge-name {
-      font-size: 0.65rem;
+      font-size: 0.55rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: #888;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       line-height: 1.2;
     }
 
@@ -305,11 +310,67 @@
     }
 
     .badge-threshold {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: #444;
     }
 
     .badge-card.earned .badge-threshold {
+      color: #666;
+    }
+
+    /* Badge Modal */
+    .badge-modal-content {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .badge-modal-emoji {
+      font-size: 5rem;
+      margin-bottom: 20px;
+    }
+
+    .badge-modal-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .badge-modal-threshold {
+      font-size: 1.2rem;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .badge-modal-description {
+      color: #888;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .badge-modal-status {
+      margin-top: 25px;
+      padding: 15px;
+      border: 1px solid #333;
+    }
+
+    .badge-modal-status.earned {
+      border-color: #fff;
+      background: #111;
+    }
+
+    .badge-modal-status span {
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 0.8rem;
+    }
+
+    .badge-modal-status.earned span {
+      color: #fff;
+    }
+
+    .badge-modal-status:not(.earned) span {
       color: #666;
     }
 
@@ -828,6 +889,22 @@
     </div>
   </div>
 
+  <!-- Badge Modal -->
+  <div class="modal" id="badgeModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('badgeModal')">&times;</button>
+      <div class="badge-modal-content">
+        <div class="badge-modal-emoji" id="badgeModalEmoji"></div>
+        <div class="badge-modal-name" id="badgeModalName"></div>
+        <div class="badge-modal-threshold" id="badgeModalThreshold"></div>
+        <div class="badge-modal-description" id="badgeModalDescription"></div>
+        <div class="badge-modal-status" id="badgeModalStatus">
+          <span id="badgeModalStatusText"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_URL = '';
     let stripe;
@@ -1101,27 +1178,87 @@
       }
     }
 
-    function loadBadges() {
-      const badges = [
-        { threshold: 1, name: 'Lil Baby Slay', emoji: '🐣' },
-        { threshold: 10, name: 'Ate and Left No Crumbs', emoji: '💅' },
-        { threshold: 100, name: 'Main Character Energy', emoji: '✨' },
-        { threshold: 1000, name: 'Understood the Assignment', emoji: '📝' },
-        { threshold: 10000, name: 'Goated with the Sauce', emoji: '🐐' },
-        { threshold: 100000, name: 'Absolutely Unhinged Legend', emoji: '🤯' },
-        { threshold: 1000000, name: 'No Cap On God Fr Fr', emoji: '👁️' }
-      ];
+    const BADGES_DATA = [
+      {
+        threshold: 1,
+        name: 'Lil Baby Slay',
+        emoji: '🐣',
+        description: 'You took the first step. Everyone starts somewhere, and you chose to start here. That takes guts. Welcome to the fam.'
+      },
+      {
+        threshold: 10,
+        name: 'Ate and Left No Crumbs',
+        emoji: '💅',
+        description: 'You didn\'t just donate, you served. Clean plate energy. The kind of person who finishes what they start.'
+      },
+      {
+        threshold: 100,
+        name: 'Main Character Energy',
+        emoji: '✨',
+        description: 'The spotlight finds you. You\'re not in the background anymore—you\'re writing the story now. Triple digits hit different.'
+      },
+      {
+        threshold: 1000,
+        name: 'Understood the Assignment',
+        emoji: '📝',
+        description: 'While others were still reading the syllabus, you turned in extra credit. A thousand euros says you get it. You really get it.'
+      },
+      {
+        threshold: 10000,
+        name: 'Goated with the Sauce',
+        emoji: '🐐',
+        description: 'Legendary status unlocked. You\'re not just playing the game—you\'re changing it. The sauce is immaculate. The drip is eternal.'
+      },
+      {
+        threshold: 100000,
+        name: 'Absolutely Unhinged Legend',
+        emoji: '🤯',
+        description: 'Normal people don\'t do this. You\'re built different. Six figures of pure chaotic good energy. History will remember this moment.'
+      },
+      {
+        threshold: 1000000,
+        name: 'No Cap On God Fr Fr',
+        emoji: '👁️',
+        description: 'You\'ve transcended. A million euros just because you can. This isn\'t a flex—this is a lifestyle. You are the main character of main characters. Respectfully, touch grass (but also, respect).'
+      }
+    ];
 
+    function loadBadges() {
       const grid = document.getElementById('badgesGrid');
       const userTotal = currentUser ? currentUser.totalDonated / 100 : 0;
 
-      grid.innerHTML = badges.map(badge => `
-        <div class="badge-card ${userTotal >= badge.threshold ? 'earned' : ''}">
+      grid.innerHTML = BADGES_DATA.map((badge, index) => `
+        <div class="badge-card ${userTotal >= badge.threshold ? 'earned' : ''}" onclick="showBadgeModal(${index})">
           <div class="badge-emoji">${badge.emoji}</div>
           <div class="badge-name">${badge.name}</div>
           <div class="badge-threshold">€${badge.threshold.toLocaleString()}</div>
         </div>
       `).join('');
+    }
+
+    function showBadgeModal(index) {
+      const badge = BADGES_DATA[index];
+      const userTotal = currentUser ? currentUser.totalDonated / 100 : 0;
+      const isEarned = userTotal >= badge.threshold;
+
+      document.getElementById('badgeModalEmoji').textContent = badge.emoji;
+      document.getElementById('badgeModalName').textContent = badge.name;
+      document.getElementById('badgeModalThreshold').textContent = `€${badge.threshold.toLocaleString()}+ donated`;
+      document.getElementById('badgeModalDescription').textContent = badge.description;
+
+      const statusEl = document.getElementById('badgeModalStatus');
+      const statusText = document.getElementById('badgeModalStatusText');
+
+      if (isEarned) {
+        statusEl.classList.add('earned');
+        statusText.textContent = '✓ Badge Earned';
+      } else {
+        statusEl.classList.remove('earned');
+        const needed = badge.threshold - userTotal;
+        statusText.textContent = `€${needed.toLocaleString()} more to unlock`;
+      }
+
+      showModal('badgeModal');
     }
 
     async function loadLeaderboard() {
