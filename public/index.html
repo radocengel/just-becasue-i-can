@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Just Because You Can</title>
-  <script src="https://js.stripe.com/v3/"></script>
-  <!-- PayPal SDK loaded dynamically with client ID from config -->
+  <script async src="https://js.stripe.com/v3/buy-button.js"></script>
   <style>
     * {
       margin: 0;
@@ -900,78 +899,24 @@
 
       <!-- Donation Form (logged in) -->
       <div id="donationForm" style="display: none;">
-        <div id="userWelcome" style="margin-bottom: 20px;">
+        <div id="userWelcome" style="margin-bottom: 30px;">
           <span id="welcomeName" style="color: #fff;"></span>
           <span id="welcomeCountry" style="color: #666; margin-left: 5px;"></span>
         </div>
 
-        <div class="amount-input-wrapper">
-          <span class="currency-symbol">€</span>
-          <input type="number" class="amount-input" id="customAmount" placeholder="0" min="1" value="10">
-        </div>
-
-        <div class="quick-amounts">
-          <button class="quick-amount" data-amount="1">€1</button>
-          <button class="quick-amount active" data-amount="10">€10</button>
-          <button class="quick-amount" data-amount="100">€100</button>
-          <button class="quick-amount" data-amount="1000">€1K</button>
-          <button class="quick-amount" data-amount="10000">€10K</button>
-        </div>
-
-        <!-- Payment Method Tabs -->
-        <div class="payment-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
-          <button class="payment-tab active" data-tab="card" onclick="switchPaymentTab('card')" style="flex: 1; padding: 12px; background: #fff; color: #000; border: none; cursor: pointer; font-weight: 600;">Card</button>
-          <button class="payment-tab" data-tab="paypal" onclick="switchPaymentTab('paypal')" style="flex: 1; padding: 12px; background: #111; color: #666; border: 1px solid #333; cursor: pointer; font-weight: 600;">PayPal</button>
-          <button class="payment-tab" data-tab="crypto" onclick="switchPaymentTab('crypto')" style="flex: 1; padding: 12px; background: #111; color: #666; border: 1px solid #333; cursor: pointer; font-weight: 600;">Crypto</button>
-        </div>
-
-        <!-- Card Payment -->
-        <div id="cardPayment" class="payment-content">
-          <div id="payment-element"></div>
-          <button class="pay-btn" id="payBtn" onclick="handlePayment()">
-            Send It 🚀
-          </button>
-        </div>
-
-        <!-- PayPal Payment -->
-        <div id="paypalPayment" class="payment-content" style="display: none;">
-          <div id="paypal-button-container" style="margin-bottom: 15px;"></div>
-          <div id="apple-pay-button" style="margin-top: 15px;"></div>
-          <p style="color: #444; font-size: 0.75rem; margin-top: 10px;">Apple Pay available via PayPal</p>
-        </div>
-
-        <!-- Crypto Payment -->
-        <div id="cryptoPayment" class="payment-content" style="display: none;">
-          <div style="background: #111; border: 1px solid #222; padding: 20px; margin-bottom: 15px;">
-            <p style="color: #fff; font-size: 0.9rem; margin-bottom: 15px;">🔥 We accept crypto! Best options:</p>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #f7931a;">₿ Bitcoin</span>
-              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #627eea;">Ξ Ethereum</span>
-              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #26a17b;">₮ USDT</span>
-              <span style="background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #2775ca;">◎ USDC</span>
-            </div>
-            <p style="color: #666; font-size: 0.75rem; line-height: 1.5;">
-              <strong style="color: #888;">Pro tip:</strong> USDT or USDC on Polygon/Arbitrum = lowest fees 🚀<br>
-              Bitcoin/ETH for the OGs who don't care about gas ⛽
-            </p>
-          </div>
-          <button class="pay-btn" id="cryptoPayBtn" onclick="handleCryptoPayment()">
-            Send It 🚀
-          </button>
-          <p style="color: #444; font-size: 0.7rem; margin-top: 10px;">Powered by NOWPayments • 100+ cryptocurrencies supported</p>
-        </div>
-
-        <div class="loading" id="paymentLoading">
-          <div class="spinner"></div>
-          <p style="margin-top: 15px; color: #666;">Processing...</p>
+        <!-- Stripe Buy Button -->
+        <div style="display: flex; justify-content: center; margin: 30px 0;">
+          <stripe-buy-button
+            buy-button-id="buy_btn_1SYscCI1F9FkqbtrFKCM1vnV"
+            publishable-key="pk_live_51SYpvEI1F9FkqbtrKMhxCfNegj5xhSbxhueo8vKLluvmKaKtwivOVYxT6yOtpCnqMCFbHfuDyzedbtmhc4H448hX00ID6kG9Ou"
+          >
+          </stripe-buy-button>
         </div>
 
         <div class="payment-methods">
           <span>Card</span>
           <span>Apple Pay</span>
           <span>Google Pay</span>
-          <span>PayPal</span>
-          <span>Crypto</span>
         </div>
 
         <div id="guestUpgrade" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #222; display: none;">
@@ -1206,102 +1151,15 @@
 
   <script>
     const API_URL = '';
-    let stripe;
-    let elements;
-    let paymentElement;
     let currentUser = null;
-    let selectedAmount = 10;
-    let paymentConfig = null;
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
       populateCountries();
       loadStats();
       loadBadges();
       loadLeaderboard();
       checkAuth();
-      initAmountButtons();
-      await loadPaymentConfig();
     });
-
-    async function loadPaymentConfig() {
-      try {
-        const res = await fetch(`${API_URL}/api/config`);
-        paymentConfig = await res.json();
-
-        // Load PayPal SDK dynamically if client ID is configured
-        if (paymentConfig.paypal.clientId) {
-          const script = document.createElement('script');
-          script.src = `https://www.paypal.com/sdk/js?client-id=${paymentConfig.paypal.clientId}&currency=EUR&enable-funding=venmo&components=buttons,applepay`;
-          script.onload = () => console.log('PayPal SDK loaded');
-          document.head.appendChild(script);
-        }
-      } catch (err) {
-        console.error('Failed to load payment config:', err);
-      }
-    }
-
-    async function initStripe() {
-      if (!paymentConfig || !paymentConfig.stripe.publishableKey) {
-        console.error('Stripe not configured');
-        document.getElementById('cardPayment').innerHTML = '<p style="color: #666; text-align: center;">Card payments not available. Please configure Stripe.</p>';
-        return;
-      }
-
-      stripe = Stripe(paymentConfig.stripe.publishableKey);
-
-      elements = stripe.elements({
-        mode: 'payment',
-        amount: selectedAmount * 100,
-        currency: 'eur',
-        appearance: {
-          theme: 'night',
-          variables: {
-            colorPrimary: '#ffffff',
-            colorBackground: '#000000',
-            colorText: '#ffffff',
-            colorDanger: '#ff0000',
-            borderRadius: '0px',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          },
-          rules: {
-            '.Input': {
-              border: '1px solid #333',
-              backgroundColor: '#000'
-            },
-            '.Input:focus': {
-              border: '1px solid #fff'
-            }
-          }
-        }
-      });
-
-      paymentElement = elements.create('payment', { layout: 'tabs' });
-      paymentElement.mount('#payment-element');
-    }
-
-    function initAmountButtons() {
-      document.querySelectorAll('.quick-amount').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.quick-amount').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          selectedAmount = parseInt(btn.dataset.amount);
-          document.getElementById('customAmount').value = selectedAmount;
-          updatePaymentAmount();
-        });
-      });
-
-      document.getElementById('customAmount').addEventListener('input', (e) => {
-        selectedAmount = parseInt(e.target.value) || 1;
-        document.querySelectorAll('.quick-amount').forEach(b => b.classList.remove('active'));
-        updatePaymentAmount();
-      });
-    }
-
-    function updatePaymentAmount() {
-      if (elements) {
-        elements.update({ amount: selectedAmount * 100 });
-      }
-    }
 
     // Country list
     const COUNTRIES = [
@@ -1354,7 +1212,6 @@
       if (token && user) {
         currentUser = JSON.parse(user);
         updateAuthUI(true);
-        initStripe();
       } else {
         updateAuthUI(false);
       }
@@ -1430,8 +1287,7 @@
         currentUser = data.user;
 
         updateAuthUI(true);
-        initStripe();
-        loadLeaderboard();
+                loadLeaderboard();
       } catch (err) {
         alert('Error: ' + err.message);
       }
@@ -1467,8 +1323,7 @@
 
         closeModal('registerModal');
         updateAuthUI(true);
-        initStripe();
-        loadLeaderboard();
+                loadLeaderboard();
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.style.display = 'block';
@@ -1497,8 +1352,7 @@
 
         closeModal('loginModal');
         updateAuthUI(true);
-        initStripe();
-        loadLeaderboard();
+                loadLeaderboard();
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.style.display = 'block';
@@ -1543,234 +1397,6 @@
       currentUser = null;
       updateAuthUI(false);
       loadLeaderboard();
-    }
-
-    async function handlePayment() {
-      if (!currentUser) {
-        showModal('loginModal');
-        return;
-      }
-
-      const amount = parseInt(document.getElementById('customAmount').value);
-      if (!amount || amount < 1) {
-        alert('Enter a valid amount');
-        return;
-      }
-
-      const payBtn = document.getElementById('payBtn');
-      const loading = document.getElementById('paymentLoading');
-
-      payBtn.style.display = 'none';
-      loading.classList.add('active');
-
-      try {
-        const res = await fetch(`${API_URL}/api/payments/create-intent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ amount })
-        });
-
-        const { clientSecret, error: createError } = await res.json();
-        if (createError) throw new Error(createError);
-
-        const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-          elements,
-          clientSecret,
-          confirmParams: { return_url: window.location.href },
-          redirect: 'if_required'
-        });
-
-        if (stripeError) throw new Error(stripeError.message);
-
-        const confirmRes = await fetch(`${API_URL}/api/payments/confirm`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ paymentIntentId: paymentIntent.id })
-        });
-
-        const confirmData = await confirmRes.json();
-        if (!confirmRes.ok) throw new Error(confirmData.error);
-
-        showSuccessModal(confirmData);
-        loadStats();
-        loadLeaderboard();
-
-        currentUser.totalDonated = confirmData.totalDonated;
-        localStorage.setItem('user', JSON.stringify(currentUser));
-        loadBadges();
-
-      } catch (err) {
-        alert('Payment failed: ' + err.message);
-      } finally {
-        payBtn.style.display = 'block';
-        loading.classList.remove('active');
-      }
-    }
-
-    // Payment Tab Switching
-    function switchPaymentTab(tab) {
-      // Update tab buttons
-      document.querySelectorAll('.payment-tab').forEach(btn => {
-        if (btn.dataset.tab === tab) {
-          btn.style.background = '#fff';
-          btn.style.color = '#000';
-          btn.style.border = 'none';
-          btn.classList.add('active');
-        } else {
-          btn.style.background = '#111';
-          btn.style.color = '#666';
-          btn.style.border = '1px solid #333';
-          btn.classList.remove('active');
-        }
-      });
-
-      // Show/hide payment content
-      document.getElementById('cardPayment').style.display = tab === 'card' ? 'block' : 'none';
-      document.getElementById('paypalPayment').style.display = tab === 'paypal' ? 'block' : 'none';
-      document.getElementById('cryptoPayment').style.display = tab === 'crypto' ? 'block' : 'none';
-
-      // Initialize PayPal buttons if needed
-      if (tab === 'paypal' && !document.querySelector('#paypal-button-container .paypal-buttons')) {
-        initPayPal();
-      }
-    }
-
-    // PayPal Integration
-    let paypalInitialized = false;
-    function initPayPal() {
-      if (paypalInitialized) return;
-
-      // Check if PayPal is configured and SDK is loaded
-      if (!paymentConfig || !paymentConfig.paypal.clientId) {
-        document.getElementById('paypal-button-container').innerHTML = '<p style="color: #666; text-align: center;">PayPal not configured.</p>';
-        return;
-      }
-
-      if (typeof paypal === 'undefined') {
-        // SDK still loading, retry in 500ms
-        setTimeout(initPayPal, 500);
-        return;
-      }
-
-      paypalInitialized = true;
-
-      const amount = parseInt(document.getElementById('customAmount').value) || 10;
-
-      paypal.Buttons({
-        style: {
-          layout: 'vertical',
-          color: 'black',
-          shape: 'rect',
-          label: 'donate'
-        },
-        createOrder: async function(data, actions) {
-          if (!currentUser) {
-            showModal('loginModal');
-            throw new Error('Please login first');
-          }
-          return actions.order.create({
-            purchase_units: [{
-              amount: {
-                value: amount.toString(),
-                currency_code: 'EUR'
-              },
-              description: 'Just Because You Can - Donation'
-            }]
-          });
-        },
-        onApprove: async function(data, actions) {
-          const loading = document.getElementById('paymentLoading');
-          loading.classList.add('active');
-
-          try {
-            const details = await actions.order.capture();
-
-            // Record the donation on our server
-            const res = await fetch(`${API_URL}/api/payments/paypal-confirm`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: JSON.stringify({
-                orderId: data.orderID,
-                amount: amount
-              })
-            });
-
-            const confirmData = await res.json();
-            if (!res.ok) throw new Error(confirmData.error);
-
-            showSuccessModal(confirmData);
-            loadStats();
-            loadLeaderboard();
-
-            currentUser.totalDonated = confirmData.totalDonated;
-            localStorage.setItem('user', JSON.stringify(currentUser));
-            loadBadges();
-          } catch (err) {
-            alert('PayPal payment failed: ' + err.message);
-          } finally {
-            loading.classList.remove('active');
-          }
-        },
-        onError: function(err) {
-          console.error('PayPal error:', err);
-          alert('PayPal error. Please try again.');
-        }
-      }).render('#paypal-button-container');
-    }
-
-    // Crypto Payment
-    async function handleCryptoPayment() {
-      if (!paymentConfig || !paymentConfig.crypto.enabled) {
-        alert('Crypto payments not configured. Please contact support.');
-        return;
-      }
-
-      if (!currentUser) {
-        showModal('loginModal');
-        return;
-      }
-
-      const amount = parseInt(document.getElementById('customAmount').value);
-      if (!amount || amount < 1) {
-        alert('Enter a valid amount');
-        return;
-      }
-
-      const loading = document.getElementById('paymentLoading');
-      loading.classList.add('active');
-
-      try {
-        const res = await fetch(`${API_URL}/api/payments/crypto-create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ amount })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        // Redirect to crypto payment page
-        if (data.paymentUrl) {
-          window.open(data.paymentUrl, '_blank');
-          alert('Complete the payment in the new window. Your donation will be credited once confirmed on the blockchain.');
-        }
-      } catch (err) {
-        alert('Crypto payment failed: ' + err.message);
-      } finally {
-        loading.classList.remove('active');
-      }
     }
 
     function showSuccessModal(data) {
